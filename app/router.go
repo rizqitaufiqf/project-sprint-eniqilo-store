@@ -27,6 +27,7 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	// Staffs API
 	staffApi := app.Group("/v1/staff")
 	staffApi.Post("/register", staffController.Register)
+	staffApi.Post("/login", staffController.Login)
 
 	// JWT middleware
 	app.Use(helpers.CheckTokenHeader)

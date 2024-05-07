@@ -33,3 +33,17 @@ func (controller *StaffController) Register(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).JSON(resp)
 
 }
+
+func (controller *StaffController) Login(ctx *fiber.Ctx) error {
+	staffReq := new(staff_entity.StaffLoginRequest)
+	if err := ctx.BodyParser(staffReq); err != nil {
+		return exc.BadRequestException("Failed to parse request body")
+	}
+
+	resp, err := controller.StaffService.Login(ctx.UserContext(), *staffReq)
+	if err != nil {
+		return exc.Exception(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(resp)
+}
