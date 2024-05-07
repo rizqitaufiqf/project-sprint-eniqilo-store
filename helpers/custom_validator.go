@@ -14,15 +14,11 @@ func validateBoolean(fl validator.FieldLevel) bool {
 	return err == nil
 }
 
-func validateRegex(fl validator.FieldLevel) bool {
+func validatePhoneNumber(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
 
-	regexTag := fl.Param()
-	if regexTag == "" {
-		return false
-	}
-
-	matched, _ := regexp.MatchString(regexTag, value)
+	pattern := `^\+\d{1,}(?:-?\d{1,})+$`
+	matched, _ := regexp.MatchString(pattern, value)
 	return matched
 }
 
@@ -31,5 +27,5 @@ func RegisterCustomValidator(validator *validator.Validate) {
 	// validator.RegisterStructValidation() -> if you want to create validator then access all fields to the struct entity
 
 	validator.RegisterValidation("boolean", validateBoolean)
-	validator.RegisterValidation("regex", validateRegex)
+	validator.RegisterValidation("phoneNumber", validatePhoneNumber)
 }
