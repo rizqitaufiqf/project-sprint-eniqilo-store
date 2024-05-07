@@ -45,7 +45,7 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 		ImageUrl:    req.ImageUrl,
 		Notes:       req.Notes,
 		Price:       req.Price,
-		Stock:       req.Stock,
+		Stock:       *req.Stock,
 		Location:    req.Location,
 		IsAvailable: *req.IsAvailable,
 	}
