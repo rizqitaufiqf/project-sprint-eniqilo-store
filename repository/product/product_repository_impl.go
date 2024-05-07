@@ -15,7 +15,7 @@ func NewProductRepository() ProductRepository {
 	return &ProductRepositoryImpl{}
 }
 
-func (repository *ProductRepositoryImpl) Add(ctx context.Context, dbPool pgxpool.Pool, product product_entity.Product) (*product_entity.Product, error) {
+func (repository *ProductRepositoryImpl) Add(ctx context.Context, dbPool *pgxpool.Pool, product product_entity.Product) (*product_entity.Product, error) {
 	var productId string
 	var createdAt time.Time
 	query := `INSERT INTO products
