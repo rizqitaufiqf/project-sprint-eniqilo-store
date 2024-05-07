@@ -35,4 +35,4 @@ build-prod-mac:
 	GOOS=darwin GOARCH=amd64 go build -o build/eniqilo-store
 
 scp:
-	scp -i w1key build/eniqilo-store ubuntu@xx.xx.xx.xx:~
+	scp -i key build/eniqilo-store ubuntu@xx.xx.xx.xx:~

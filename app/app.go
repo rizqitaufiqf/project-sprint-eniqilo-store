@@ -1,8 +1,8 @@
 package app
 
 import (
+	cfg "eniqilo-store/config"
 	"eniqilo-store/database"
-	cfg "eniqilo-store/helpers"
 	"log"
 
 	"github.com/goccy/go-json"
