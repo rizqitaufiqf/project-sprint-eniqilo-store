@@ -20,10 +20,10 @@ clear-db:
 	docker rm -f -v store-db
 
 migrate-db:
-	migrate -database "postgres://store:password@localhost:5432/store-db?sslmode=disable" -path db/migrations up
+	migrate -database "postgres://store:password@localhost:5432/store-db?sslmode=disable" -path database/migrations up
 	
 migrate-db-down:
-	migrate -database "postgres://store:password@localhost:5432/store-db?sslmode=disable" -path db/migrations down -all
+	migrate -database "postgres://store:password@localhost:5432/store-db?sslmode=disable" -path database/migrations down -all
 	
 build-prod-linux:
 	GOOS=linux GOARCH=amd64 go build -o build/eniqilo-store
