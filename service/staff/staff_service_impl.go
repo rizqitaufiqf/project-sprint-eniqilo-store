@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type StaffServiceImpl struct {
@@ -73,4 +74,52 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 			AccessToken: token,
 		},
 	}, nil
+}
+
+func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error) {
+	if err := service.Validator.Struct(req); err != nil {
+		return staff_entity.StaffLoginResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
+	}
+
+	tx, err := service.DBPool.Begin(ctx)
+	if err != nil {
+		return staff_entity.StaffLoginResponse{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	staff := staff_entity.Staff{
+		PhoneNumber: req.PhoneNumber,
+	}
+
+	staffLogin, err := staffRep.NewStaffRepository().Login(ctx, tx, staff)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return staff_entity.StaffLoginResponse{}, exc.NotFoundException("Staff is not found")
+		}
+
+		return staff_entity.StaffLoginResponse{}, err
+	}
+
+	if _, err = helpers.ComparePassword(staffLogin.Password, req.Password); err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return staff_entity.StaffLoginResponse{}, exc.BadRequestException("Invalid password")
+		}
+
+		return staff_entity.StaffLoginResponse{}, err
+	}
+
+	token, err := authService.NewAuthService().GenerateToken(ctx, staffLogin.Id)
+	if err != nil {
+		return staff_entity.StaffLoginResponse{}, err
+	}
+
+	return staff_entity.StaffLoginResponse{
+		Message: "Staff logged successfully",
+		Data: &staff_entity.StaffData{
+			PhoneNumber: staffLogin.PhoneNumber,
+			Name:        staffLogin.Name,
+			AccessToken: token,
+		},
+	}, nil
+
 }
