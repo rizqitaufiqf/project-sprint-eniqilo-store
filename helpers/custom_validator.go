@@ -14,9 +14,21 @@ func validatePhoneNumber(fl validator.FieldLevel) bool {
 	return matched
 }
 
+func validateProductCategory(fl validator.FieldLevel) bool {
+	value := fl.Field().String()
+
+	for _, categ := range ProductCategory {
+		if categ == value {
+			return true
+		}
+	}
+	return false
+}
+
 func RegisterCustomValidator(validator *validator.Validate) {
 	// validator.RegisterValidation() -> if you want to create new tags rule to be used on struct entity
 	// validator.RegisterStructValidation() -> if you want to create validator then access all fields to the struct entity
 
 	validator.RegisterValidation("phoneNumber", validatePhoneNumber)
+	validator.RegisterValidation("productCategory", validateProductCategory)
 }
