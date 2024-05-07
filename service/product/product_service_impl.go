@@ -47,7 +47,7 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 		Price:       req.Price,
 		Stock:       req.Stock,
 		Location:    req.Location,
-		IsAvailable: req.IsAvailable,
+		IsAvailable: *req.IsAvailable,
 	}
 
 	userCtx := ctx.UserContext()

@@ -14,6 +14,13 @@ type ProductController struct {
 	AuthService    auth_service.AuthService
 }
 
+func NewProductController(productService product_service.ProductService, authService auth_service.AuthService) *ProductController {
+	return &ProductController{
+		ProductService: productService,
+		AuthService:    authService,
+	}
+}
+
 func (controller *ProductController) Add(ctx *fiber.Ctx) error {
 	productReq := new(product_entity.ProductRegisterRequest)
 	if err := ctx.BodyParser(productReq); err != nil {
