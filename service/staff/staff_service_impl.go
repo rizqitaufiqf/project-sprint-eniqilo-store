@@ -37,12 +37,6 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 		return staff_entity.StaffRegisterResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
 
-	tx, err := service.DBPool.Begin(ctx)
-	if err != nil {
-		return staff_entity.StaffRegisterResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
-	}
-	defer tx.Rollback(ctx)
-
 	hashPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
 		return staff_entity.StaffRegisterResponse{}, err
@@ -53,7 +47,9 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 		PhoneNumber: req.PhoneNumber,
 		Password:    hashPassword,
 	}
-	staffRegistered, err := staffRep.NewStaffRepository().Register(ctx, tx, staff)
+
+	staffRegistered, err := staffRep.NewStaffRepository().Register(ctx, service.DBPool, staff)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return staff_entity.StaffRegisterResponse{}, exc.ConflictException("Staff with this phone number already registered")
@@ -81,17 +77,11 @@ func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.Sta
 		return staff_entity.StaffLoginResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
 
-	tx, err := service.DBPool.Begin(ctx)
-	if err != nil {
-		return staff_entity.StaffLoginResponse{}, err
-	}
-	defer tx.Rollback(ctx)
-
 	staff := staff_entity.Staff{
 		PhoneNumber: req.PhoneNumber,
 	}
 
-	staffLogin, err := staffRep.NewStaffRepository().Login(ctx, tx, staff)
+	staffLogin, err := staffRep.NewStaffRepository().Login(ctx, service.DBPool, staff)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return staff_entity.StaffLoginResponse{}, exc.NotFoundException("Staff is not found")
