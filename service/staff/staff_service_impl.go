@@ -49,7 +49,6 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 	}
 
 	staffRegistered, err := staffRep.NewStaffRepository().Register(ctx, service.DBPool, staff)
-
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return staff_entity.StaffRegisterResponse{}, exc.ConflictException("Staff with this phone number already registered")
@@ -73,6 +72,7 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 }
 
 func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error) {
+	// validate by rule we defined in _request_entity.go
 	if err := service.Validator.Struct(req); err != nil {
 		return staff_entity.StaffLoginResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
@@ -111,5 +111,4 @@ func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.Sta
 			AccessToken: token,
 		},
 	}, nil
-
 }
