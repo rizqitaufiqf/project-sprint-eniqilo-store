@@ -4,8 +4,10 @@ import (
 	"eniqilo-store/controller"
 	"eniqilo-store/helpers"
 
+	customer_repository "eniqilo-store/repository/customer"
 	staffr_repository "eniqilo-store/repository/staff"
 	auth_service "eniqilo-store/service/auth"
+	customer_service "eniqilo-store/service/customer"
 	staff_service "eniqilo-store/service/staff"
 
 	"github.com/go-playground/validator"
@@ -24,6 +26,10 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	staffService := staff_service.NewStaffService(staffRepository, dbPool, authService, validator)
 	staffController := controller.NewStaffController(staffService, authService)
 
+	customerRepository := customer_repository.NewCustomerRepository(dbPool)
+	customerService := customer_service.NewCustomerService(customerRepository, validator)
+	customerController := controller.NewCustomerController(customerService)
+
 	// Staffs API
 	staffApi := app.Group("/v1/staff")
 	staffApi.Post("/register", staffController.Register)
@@ -33,7 +39,8 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	app.Use(helpers.CheckTokenHeader)
 	app.Use(helpers.GetTokenHandler())
 
-	staffApi.Get("/protected", func(c *fiber.Ctx) error {
-		return c.SendString("protected")
-	})
+	// Staffs API
+	customerApi := app.Group("/v1/customer")
+	customerApi.Post("/register", customerController.Register)
+	customerApi.Get("/", customerController.Search)
 }
