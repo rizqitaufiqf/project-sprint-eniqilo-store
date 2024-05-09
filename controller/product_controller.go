@@ -44,3 +44,17 @@ func (controller *ProductController) Edit(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(resp)
 }
+
+func (controller *ProductController) Search(ctx *fiber.Ctx) error {
+	productSearchQueries := new(product_entity.ProductSearchQuery)
+	if err := ctx.QueryParser(productSearchQueries); err != nil {
+		return exc.BadRequestException("Error when parsing request query")
+	}
+
+	resp, err := controller.ProductService.Search(ctx, *productSearchQueries)
+	if err != nil {
+		return exc.Exception(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(resp)
+}
