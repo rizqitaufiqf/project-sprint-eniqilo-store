@@ -4,13 +4,11 @@ import (
 	"context"
 	product_entity "eniqilo-store/entity/product"
 	exc "eniqilo-store/exceptions"
-	"eniqilo-store/helpers"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -83,21 +81,14 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	if searchQuery.IsAvailable != "" {
 		isAvail, err := strconv.ParseBool(searchQuery.IsAvailable)
 		if err != nil {
-			log.Info("Ignoring is available")
-		} else {
-			whereClause = append(whereClause, fmt.Sprintf("is_available = $%s", strconv.Itoa(len(searchParams)+1)))
-			searchParams = append(searchParams, isAvail)
+			return &[]product_entity.Product{}, err
 		}
+		whereClause = append(whereClause, fmt.Sprintf("is_available = $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, isAvail)
 	}
 	if searchQuery.Category != "" {
-		for _, categ := range helpers.ProductCategory {
-			if categ != searchQuery.Category {
-				log.Info("Searching valid Category")
-			} else {
-				whereClause = append(whereClause, fmt.Sprintf("category = $%s", strconv.Itoa(len(searchParams)+1)))
-				searchParams = append(searchParams, searchQuery.Category)
-			}
-		}
+		whereClause = append(whereClause, fmt.Sprintf("category = $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Category)
 	}
 	if searchQuery.Sku != "" {
 		whereClause = append(whereClause, fmt.Sprintf("sku = $%s", strconv.Itoa(len(searchParams)+1)))
@@ -106,17 +97,16 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	if searchQuery.InStock != "" {
 		inStock, err := strconv.ParseBool(searchQuery.InStock)
 		if err != nil {
-			log.Info("Ignoring In stock")
-		} else {
-			var op string
-			if inStock {
-				op = "> 0"
-			} else {
-				op = "= 0"
-			}
-			whereClause = append(whereClause, fmt.Sprintf("stock %s $%s", op, strconv.Itoa(len(searchParams)+1)))
-			searchParams = append(searchParams, searchQuery.Name)
+			return &[]product_entity.Product{}, err
 		}
+		var op string
+		if inStock {
+			op = "> 0"
+		} else {
+			op = "= 0"
+		}
+		whereClause = append(whereClause, fmt.Sprintf("stock %s $%s", op, strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Name)
 	}
 	if len(whereClause) > 0 {
 		query += " AND " + strings.Join(whereClause, " AND ")
@@ -125,22 +115,13 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	// construct order by
 	var orderByClause []string
 	var orderByDefault = ` ORDER BY created_at DESC`
-	var validOrderBy = []string{"asc", "desc"}
-	validateOrderby := func(clause []string, params []interface{}, field string, modparams string) {
-		for _, mod := range validOrderBy {
-			if mod != searchQuery.Price {
-				log.Info("Searching valid order params")
-			} else {
-				orderByClause = append(orderByClause, fmt.Sprintf("%s $%s", field, strconv.Itoa(len(searchParams)+1)))
-				searchParams = append(searchParams, modparams)
-			}
-		}
-	}
 	if searchQuery.Price != "" {
-		validateOrderby(orderByClause, searchParams, "price", searchQuery.Price)
+		orderByClause = append(orderByClause, fmt.Sprintf("price $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Price)
 	}
 	if searchQuery.CreatedAt != "" {
-		validateOrderby(orderByClause, searchParams, "created_at", searchQuery.Price)
+		orderByClause = append(orderByClause, fmt.Sprintf("created_at $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.CreatedAt)
 	}
 
 	if len(orderByClause) > 0 {
