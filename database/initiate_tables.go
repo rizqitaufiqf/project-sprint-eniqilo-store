@@ -50,7 +50,7 @@ func InitiateTables(dbPool *pgxpool.Pool) error {
 			change INT NOT NULL,
 			FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE NO ACTION,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)
+		);
 		`,
 		// Add more table creation queries here if needed
 	}

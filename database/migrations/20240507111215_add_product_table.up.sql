@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS products (
+    id VARCHAR(100) NOT NULL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    image_url TEXT NOT NULL,
+    notes VARCHAR(255) NOT NULL,
+    price INT NOT NULL,
+    stock INT NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    is_available BOOL NOT NULL DEFAULT FALSE,
+    is_deleted BOOL NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

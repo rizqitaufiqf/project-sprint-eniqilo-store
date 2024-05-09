@@ -3,7 +3,6 @@ package controller
 import (
 	staff_entity "eniqilo-store/entity/staff"
 	exc "eniqilo-store/exceptions"
-	auth_service "eniqilo-store/service/auth"
 	staff_service "eniqilo-store/service/staff"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,17 +10,15 @@ import (
 
 type StaffController struct {
 	StaffService staff_service.StaffService
-	AuthService  auth_service.AuthService
 }
 
-func NewStaffController(staffService staff_service.StaffService, authService auth_service.AuthService) StaffController {
-	return StaffController{
+func NewStaffController(staffService staff_service.StaffService) *StaffController {
+	return &StaffController{
 		StaffService: staffService,
-		AuthService:  authService,
 	}
 }
 
-func (controller *StaffController) Register(ctx *fiber.Ctx) error {
+func (controller StaffController) Register(ctx *fiber.Ctx) error {
 	staffReq := new(staff_entity.StaffRegisterRequest)
 	if err := ctx.BodyParser(staffReq); err != nil {
 		return exc.BadRequestException("Failed to parse request body")
@@ -34,7 +31,7 @@ func (controller *StaffController) Register(ctx *fiber.Ctx) error {
 
 }
 
-func (controller *StaffController) Login(ctx *fiber.Ctx) error {
+func (controller StaffController) Login(ctx *fiber.Ctx) error {
 	staffReq := new(staff_entity.StaffLoginRequest)
 	if err := ctx.BodyParser(staffReq); err != nil {
 		return exc.BadRequestException("Failed to parse request body")
