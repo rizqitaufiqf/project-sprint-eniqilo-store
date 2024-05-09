@@ -97,19 +97,19 @@ func (service *productServiceImpl) Search(ctx *fiber.Ctx, searchQueries product_
 	userCtx := ctx.UserContext()
 	isAvail := strings.ToLower(searchQueries.IsAvailable)
 	inStock := strings.ToLower(searchQueries.InStock)
-	if isAvail != "true" || isAvail != "false" {
+	if isAvail != "true" && isAvail != "false" {
 		searchQueries.IsAvailable = ""
 	}
-	if inStock != "true" || inStock != "false" {
+	if inStock != "true" && inStock != "false" {
 		searchQueries.InStock = ""
 	}
 
 	createdAt := strings.ToLower(searchQueries.CreatedAt)
 	price := strings.ToLower(searchQueries.Price)
-	if price != "asc" || price != "desc" {
+	if price != "asc" && price != "desc" {
 		searchQueries.Price = ""
 	}
-	if createdAt != "asc" || createdAt != "desc" {
+	if createdAt != "asc" && createdAt != "desc" {
 		searchQueries.CreatedAt = ""
 	}
 
