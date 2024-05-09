@@ -136,13 +136,6 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 
 	productCheckout.CheckoutId = productId
 	productCheckout.CreatedAt = createdAt.Format(time.RFC3339)
-	fmt.Println(fmt.Sprintf(`update products
-	set stock = 
-		case
-		%s
-		end
-	returning id
-	`, updatedQuantityId))
 
 	var tmpProductId string
 	updateProductQuantityQuery := fmt.Sprintf(`update products
