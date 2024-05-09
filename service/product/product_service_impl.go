@@ -5,6 +5,7 @@ import (
 	exc "eniqilo-store/exceptions"
 	product_repository "eniqilo-store/repository/product"
 	"fmt"
+	"strings"
 
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
@@ -50,6 +51,27 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 		Data: &product_entity.ProductData{
 			Id:        productAdded.Id,
 			CreatedAt: productAdded.CreatedAt,
+		},
+	}, nil
+
+}
+
+func (service *productServiceImpl) Delete(ctx *fiber.Ctx) (product_entity.ProductDeleteResponse, error) {
+	productId := ctx.Params("id")
+	userCtx := ctx.UserContext()
+	productAdded, err := service.ProductRepository.Delete(userCtx, productId)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows in result set") {
+			return product_entity.ProductDeleteResponse{}, exc.NotFoundException(fmt.Sprintf("Product with id %s Not Found", productId))
+		}
+
+		return product_entity.ProductDeleteResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err.Error()))
+	}
+
+	return product_entity.ProductDeleteResponse{
+		Message: "Product successfully added",
+		Data: &product_entity.ProductDeleteData{
+			Id: productAdded.Id,
 		},
 	}, nil
 

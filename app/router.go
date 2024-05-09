@@ -53,4 +53,5 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	// Products API
 	productApi := app.Group("/v1/product")
 	productApi.Post("/", productController.Add)
+	productApi.Delete("/:id", productController.Delete)
 }

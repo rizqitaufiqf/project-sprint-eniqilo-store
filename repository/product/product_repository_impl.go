@@ -40,3 +40,16 @@ func (repository *productRepositoryImpl) Add(ctx context.Context, product produc
 
 	return &product, nil
 }
+
+func (repository *productRepositoryImpl) Delete(ctx context.Context, productId string) (*product_entity.Product, error) {
+	query := `update products set is_deleted=true where id=$1 returning id`
+	if err := repository.dbPool.QueryRow(ctx, query, productId).Scan(&productId); err != nil {
+		return &product_entity.Product{}, err
+	}
+
+	product := product_entity.Product{}
+
+	product.Id = productId
+
+	return &product, nil
+}
