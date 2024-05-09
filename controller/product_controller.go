@@ -3,7 +3,6 @@ package controller
 import (
 	product_entity "eniqilo-store/entity/product"
 	exc "eniqilo-store/exceptions"
-	auth_service "eniqilo-store/service/auth"
 	product_service "eniqilo-store/service/product"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,13 +10,11 @@ import (
 
 type ProductController struct {
 	ProductService product_service.ProductService
-	AuthService    auth_service.AuthService
 }
 
-func NewProductController(productService product_service.ProductService, authService auth_service.AuthService) *ProductController {
+func NewProductController(productService product_service.ProductService) *ProductController {
 	return &ProductController{
 		ProductService: productService,
-		AuthService:    authService,
 	}
 }
 

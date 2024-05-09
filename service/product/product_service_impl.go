@@ -8,19 +8,16 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type productServiceImpl struct {
 	ProductRepository product_repository.ProductRepository
-	DBPool            *pgxpool.Pool
 	Validator         *validator.Validate
 }
 
-func NewProductService(productRepository product_repository.ProductRepository, dbPool *pgxpool.Pool, validator *validator.Validate) ProductService {
+func NewProductService(productRepository product_repository.ProductRepository, validator *validator.Validate) ProductService {
 	return &productServiceImpl{
 		ProductRepository: productRepository,
-		DBPool:            dbPool,
 		Validator:         validator,
 	}
 }
@@ -43,9 +40,9 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 	}
 
 	userCtx := ctx.UserContext()
-	productAdded, err := product_repository.NewProductRepository().Add(userCtx, service.DBPool, product)
+	productAdded, err := service.ProductRepository.Add(userCtx, product)
 	if err != nil {
-		return product_entity.ProductRegisterResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Errorharu: %s", err.Error()))
+		return product_entity.ProductRegisterResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err.Error()))
 	}
 
 	return product_entity.ProductRegisterResponse{

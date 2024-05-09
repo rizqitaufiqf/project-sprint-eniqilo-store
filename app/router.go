@@ -26,9 +26,9 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	staffService := staff_service.NewStaffService(staffRepository, dbPool, authService, validator)
 	staffController := controller.NewStaffController(staffService, authService)
 
-	productRepository := product_repository.NewProductRepository()
-	productService := product_service.NewProductService(productRepository, dbPool, validator)
-	productController := controller.NewProductController(productService, authService)
+	productRepository := product_repository.NewProductRepository(dbPool)
+	productService := product_service.NewProductService(productRepository, validator)
+	productController := controller.NewProductController(productService)
 
 	// Staffs API
 	staffApi := app.Group("/v1/staff")

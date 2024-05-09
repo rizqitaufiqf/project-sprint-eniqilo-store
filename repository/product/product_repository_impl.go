@@ -8,14 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ProductRepositoryImpl struct {
+type productRepositoryImpl struct {
+	dbPool *pgxpool.Pool
 }
 
-func NewProductRepository() ProductRepository {
-	return &ProductRepositoryImpl{}
+func NewProductRepository(dbPool *pgxpool.Pool) ProductRepository {
+	return &productRepositoryImpl{
+		dbPool: dbPool,
+	}
 }
 
-func (repository *ProductRepositoryImpl) Add(ctx context.Context, dbPool *pgxpool.Pool, product product_entity.Product) (*product_entity.Product, error) {
+func (repository *productRepositoryImpl) Add(ctx context.Context, product product_entity.Product) (*product_entity.Product, error) {
 	var productId string
 	var createdAt time.Time
 	query := `INSERT INTO products
@@ -28,7 +31,7 @@ func (repository *ProductRepositoryImpl) Add(ctx context.Context, dbPool *pgxpoo
 	)
 	RETURNING id, created_at
 	`
-	if err := dbPool.QueryRow(ctx, query, product.Name, product.Sku, product.Category, product.ImageUrl, product.Notes, product.Price, product.Stock, product.Location, product.IsAvailable).Scan(&productId, &createdAt); err != nil {
+	if err := repository.dbPool.QueryRow(ctx, query, product.Name, product.Sku, product.Category, product.ImageUrl, product.Notes, product.Price, product.Stock, product.Location, product.IsAvailable).Scan(&productId, &createdAt); err != nil {
 		return &product_entity.Product{}, err
 	}
 
