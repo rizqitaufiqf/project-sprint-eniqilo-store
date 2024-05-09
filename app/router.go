@@ -5,7 +5,7 @@ import (
 	"eniqilo-store/helpers"
 
 	product_repository "eniqilo-store/repository/product"
-	staffr_repository "eniqilo-store/repository/staff"
+	staff_repository "eniqilo-store/repository/staff"
 	auth_service "eniqilo-store/service/auth"
 	product_service "eniqilo-store/service/product"
 	staff_service "eniqilo-store/service/staff"
@@ -22,9 +22,9 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 
 	authService := auth_service.NewAuthService()
 
-	staffRepository := staffr_repository.NewStaffRepository()
-	staffService := staff_service.NewStaffService(staffRepository, dbPool, authService, validator)
-	staffController := controller.NewStaffController(staffService, authService)
+	staffRepository := staff_repository.NewStaffRepository(dbPool)
+	staffService := staff_service.NewStaffService(staffRepository, authService, validator)
+	staffController := controller.NewStaffController(staffService)
 
 	productRepository := product_repository.NewProductRepository(dbPool)
 	productService := product_service.NewProductService(productRepository, validator)
