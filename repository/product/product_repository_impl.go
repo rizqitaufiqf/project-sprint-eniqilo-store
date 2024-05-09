@@ -66,7 +66,7 @@ func (repository *productRepositoryImpl) Edit(ctx context.Context, product produ
 }
 
 func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.Product, error) {
-	query := `SELECT * FROM products WHERE is_deleted = false`
+	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, created_at FROM products WHERE is_deleted = false`
 	var whereClause []string
 	var searchParams []interface{}
 
@@ -101,12 +101,12 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 		}
 		var op string
 		if inStock {
-			op = "> 0"
+			op = ">"
 		} else {
-			op = "= 0"
+			op = "="
 		}
 		whereClause = append(whereClause, fmt.Sprintf("stock %s $%s", op, strconv.Itoa(len(searchParams)+1)))
-		searchParams = append(searchParams, searchQuery.Name)
+		searchParams = append(searchParams, 0)
 	}
 	if len(whereClause) > 0 {
 		query += " AND " + strings.Join(whereClause, " AND ")
@@ -116,16 +116,13 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	var orderByClause []string
 	var orderByDefault = ` ORDER BY created_at DESC`
 	if searchQuery.Price != "" {
-		orderByClause = append(orderByClause, fmt.Sprintf("price $%s", strconv.Itoa(len(searchParams)+1)))
-		searchParams = append(searchParams, searchQuery.Price)
+		orderByClause = append(orderByClause, fmt.Sprintf("price %s", searchQuery.Price))
 	}
 	if searchQuery.CreatedAt != "" {
-		orderByClause = append(orderByClause, fmt.Sprintf("created_at $%s", strconv.Itoa(len(searchParams)+1)))
-		searchParams = append(searchParams, searchQuery.CreatedAt)
+		orderByClause = append(orderByClause, fmt.Sprintf("created_at %s", searchQuery.CreatedAt))
 	}
 
 	if len(orderByClause) > 0 {
-		whereClause = append(whereClause, orderByClause...)
 		query += " ORDER BY " + strings.Join(orderByClause, ", ")
 	} else {
 		query += orderByDefault
