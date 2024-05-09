@@ -7,3 +7,16 @@ type Product struct {
 	IsAvailable                                        bool
 	CreatedAt                                          string
 }
+
+type ProductSearch struct {
+	Id          string
+	Name        string
+	IsAvailable string
+	Category    string
+	Sku         string
+	Price       int
+	InStock     string
+	CreatedAt   string
+	Limit       int
+	Offset      int
+}
