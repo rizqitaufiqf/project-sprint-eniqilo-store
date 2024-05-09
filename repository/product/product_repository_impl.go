@@ -43,7 +43,7 @@ func (repository *productRepositoryImpl) Add(ctx context.Context, product produc
 	}
 
 	product.Id = productId
-	product.CreatedAt = createdAt.Format(time.RFC3339)
+	product.CreatedAt = createdAt
 
 	return &product, nil
 }
