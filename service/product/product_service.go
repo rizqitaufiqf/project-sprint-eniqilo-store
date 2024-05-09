@@ -8,4 +8,5 @@ import (
 
 type ProductService interface {
 	Add(ctx *fiber.Ctx, req product_entity.ProductRegisterRequest) (product_entity.ProductRegisterResponse, error)
+	Edit(ctx *fiber.Ctx, req product_entity.ProductEditRequest) (product_entity.ProductEditResponse, error)
 }

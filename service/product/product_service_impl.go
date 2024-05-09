@@ -54,3 +54,33 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 	}, nil
 
 }
+
+func (service *productServiceImpl) Edit(ctx *fiber.Ctx, req product_entity.ProductEditRequest) (product_entity.ProductEditResponse, error) {
+	if err := service.Validator.Struct(req); err != nil {
+		return product_entity.ProductEditResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err.Error()))
+	}
+	productId := ctx.Params("id")
+	userCtx := ctx.UserContext()
+
+	product := product_entity.Product{
+		Name:        req.Name,
+		Sku:         req.Sku,
+		Category:    req.Category,
+		ImageUrl:    req.ImageUrl,
+		Notes:       req.Notes,
+		Price:       req.Price,
+		Stock:       *req.Stock,
+		Location:    req.Location,
+		IsAvailable: *req.IsAvailable,
+	}
+
+	editedProduct, err := service.ProductRepository.Edit(userCtx, product, productId)
+	if err != nil {
+		return product_entity.ProductEditResponse{}, err
+	}
+
+	return product_entity.ProductEditResponse{
+		Message: "Sucess edit product",
+		Id:      editedProduct.Id,
+	}, nil
+}
