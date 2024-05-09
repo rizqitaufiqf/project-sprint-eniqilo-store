@@ -31,3 +31,16 @@ func (controller *ProductController) Add(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).JSON(resp)
 
 }
+
+func (controller *ProductController) Edit(ctx *fiber.Ctx) error {
+	editProductReq := new(product_entity.ProductEditRequest)
+	if err := ctx.BodyParser(editProductReq); err != nil {
+		return exc.BadRequestException("Failed to parse request body")
+	}
+	resp, err := controller.ProductService.Edit(ctx, *editProductReq)
+	if err != nil {
+		return exc.Exception(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(resp)
+}
