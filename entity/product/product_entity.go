@@ -14,7 +14,7 @@ type ProductSearch struct {
 	IsAvailable string
 	Category    string
 	Sku         string
-	Price       int
+	Price       string
 	InStock     string
 	CreatedAt   string
 	Limit       int

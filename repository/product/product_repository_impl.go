@@ -4,8 +4,14 @@ import (
 	"context"
 	product_entity "eniqilo-store/entity/product"
 	exc "eniqilo-store/exceptions"
+	"eniqilo-store/helpers"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -59,4 +65,107 @@ func (repository *productRepositoryImpl) Edit(ctx context.Context, product produ
 	product.Id = productId
 
 	return &product, nil
+}
+
+func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.Product, error) {
+	query := `SELECT * FROM products WHERE is_deleted = false`
+	var whereClause []string
+	var searchParams []interface{}
+
+	if searchQuery.Id != "" {
+		whereClause = append(whereClause, fmt.Sprintf("id = $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Id)
+	}
+	if searchQuery.Name != "" {
+		whereClause = append(whereClause, fmt.Sprintf("name ~* $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Name)
+	}
+	if searchQuery.IsAvailable != "" {
+		isAvail, err := strconv.ParseBool(searchQuery.IsAvailable)
+		if err != nil {
+			log.Info("Ignoring is available")
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("is_available = $%s", strconv.Itoa(len(searchParams)+1)))
+			searchParams = append(searchParams, isAvail)
+		}
+	}
+	if searchQuery.Category != "" {
+		for _, categ := range helpers.ProductCategory {
+			if categ != searchQuery.Category {
+				log.Info("Searching valid Category")
+			} else {
+				whereClause = append(whereClause, fmt.Sprintf("category = $%s", strconv.Itoa(len(searchParams)+1)))
+				searchParams = append(searchParams, searchQuery.Category)
+			}
+		}
+	}
+	if searchQuery.Sku != "" {
+		whereClause = append(whereClause, fmt.Sprintf("sku = $%s", strconv.Itoa(len(searchParams)+1)))
+		searchParams = append(searchParams, searchQuery.Sku)
+	}
+	if searchQuery.InStock != "" {
+		inStock, err := strconv.ParseBool(searchQuery.InStock)
+		if err != nil {
+			log.Info("Ignoring In stock")
+		} else {
+			var op string
+			if inStock {
+				op = "> 0"
+			} else {
+				op = "= 0"
+			}
+			whereClause = append(whereClause, fmt.Sprintf("stock %s $%s", op, strconv.Itoa(len(searchParams)+1)))
+			searchParams = append(searchParams, searchQuery.Name)
+		}
+	}
+	if len(whereClause) > 0 {
+		query += " AND " + strings.Join(whereClause, " AND ")
+	}
+
+	// construct order by
+	var orderByClause []string
+	var orderByDefault = ` ORDER BY created_at DESC`
+	var validOrderBy = []string{"asc", "desc"}
+	validateOrderby := func(clause []string, params []interface{}, field string, modparams string) {
+		for _, mod := range validOrderBy {
+			if mod != searchQuery.Price {
+				log.Info("Searching valid order params")
+			} else {
+				orderByClause = append(orderByClause, fmt.Sprintf("%s $%s", field, strconv.Itoa(len(searchParams)+1)))
+				searchParams = append(searchParams, modparams)
+			}
+		}
+	}
+	if searchQuery.Price != "" {
+		validateOrderby(orderByClause, searchParams, "price", searchQuery.Price)
+	}
+	if searchQuery.CreatedAt != "" {
+		validateOrderby(orderByClause, searchParams, "created_at", searchQuery.Price)
+	}
+
+	if len(orderByClause) > 0 {
+		whereClause = append(whereClause, orderByClause...)
+		query += " ORDER BY " + strings.Join(orderByClause, ", ")
+	} else {
+		query += orderByDefault
+	}
+
+	if searchQuery.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len(searchParams)+1), strconv.Itoa(len(searchParams)+2))
+		searchParams = append(searchParams, searchQuery.Limit, searchQuery.Offset)
+	}
+
+	rows, err := repository.dbPool.Query(ctx, query, searchParams...)
+	if err != nil {
+		return &[]product_entity.Product{}, err
+	}
+	defer rows.Close()
+
+	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.Product])
+	if err != nil {
+		return &[]product_entity.Product{}, err
+	}
+
+	return &products, nil
+
 }
