@@ -23,3 +23,14 @@ type ProductEditRequest struct {
 	Location    string `json:"location" validate:"required,min=1,max=200"`
 	IsAvailable *bool  `json:"isAvailable" validate:"required"`
 }
+
+type ProductSearchQuery struct {
+	Id          string `query:"id" validate:"omitempty"`
+	Name        string `query:"name" validate:"omitempty"`
+	IsAvailable string `query:"isAvailable" validate:"omitempty"`
+	Category    string `query:"categoty" validate:"omitempty"`
+	Sku         string `query:"sku" validate:"omitempty"`
+	Price       string `query:"price" validate:"omitempty"`
+	InStock     string `query:"inStock" validate:"omitempty"`
+	CreatedAt   string `quwry:"createdAt" validate:"omitempty"`
+}
