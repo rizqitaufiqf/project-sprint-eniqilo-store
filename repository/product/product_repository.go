@@ -7,4 +7,5 @@ import (
 
 type ProductRepository interface {
 	Add(ctx context.Context, req product_entity.Product) (*product_entity.Product, error)
+	Edit(ctx context.Context, req product_entity.Product, productId string) (*product_entity.Product, error)
 }

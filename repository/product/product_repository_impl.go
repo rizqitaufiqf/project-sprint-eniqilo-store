@@ -3,8 +3,10 @@ package product_repository
 import (
 	"context"
 	product_entity "eniqilo-store/entity/product"
+	exc "eniqilo-store/exceptions"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,6 +39,31 @@ func (repository *productRepositoryImpl) Add(ctx context.Context, product produc
 
 	product.Id = productId
 	product.CreatedAt = createdAt.Format(time.RFC3339)
+
+	return &product, nil
+}
+
+func (repository *productRepositoryImpl) Edit(ctx context.Context, product product_entity.Product, productId string) (*product_entity.Product, error) {
+	// check product id exist or not
+	productQ := `SELECT id FROM products WHERE id = $1 LIMIT 1`
+	_, err := repository.dbPool.Exec(ctx, productQ, productId)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return &product_entity.Product{}, exc.NotFoundException("Product id is not found")
+		}
+	}
+
+	var updatedProductId string
+	updateQ := `UPDATE products SET name = $1, sku = $2, category = $3,
+	image_url = $4, notes = $5, price = $6, stock = $7, location = $8,
+	is_available = $9
+	returning id
+	`
+	if err := repository.dbPool.QueryRow(ctx, updateQ, product.Name, product.Sku, product.Category, product.ImageUrl, product.Notes, product.Price, product.Stock, product.Location, product.IsAvailable).Scan(&updatedProductId); err != nil {
+		return &product_entity.Product{}, err
+	}
+
+	product.Id = productId
 
 	return &product, nil
 }
