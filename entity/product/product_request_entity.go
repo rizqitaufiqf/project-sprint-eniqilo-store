@@ -11,3 +11,15 @@ type ProductRegisterRequest struct {
 	Location    string `json:"location" validate:"required,min=1,max=200"`
 	IsAvailable *bool  `json:"isAvailable" validate:"required"`
 }
+
+type ProductCheckoutDetailsRequest struct {
+	ProductId string `json:"productId" validate:"required,min=1"`
+	Quantity  int    `json:"quantity" validate:"required,min=1"`
+}
+
+type ProductCheckoutRequest struct {
+	CustomerId     string                           `json:"customerId" validate:"required,min=1"`
+	ProductDetails *[]ProductCheckoutDetailsRequest `json:"productDetails" validate:"required,min=1"`
+	Paid           int                              `json:"paid" validate:"required,min=1"`
+	Change         int                              `json:"change" validate:"required,min=1"`
+}

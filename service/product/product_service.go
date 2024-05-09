@@ -9,4 +9,5 @@ import (
 type ProductService interface {
 	Add(ctx *fiber.Ctx, req product_entity.ProductRegisterRequest) (product_entity.ProductRegisterResponse, error)
 	Delete(ctx *fiber.Ctx) (product_entity.ProductDeleteResponse, error)
+	Checkout(ctx *fiber.Ctx, req product_entity.ProductCheckoutRequest) (product_entity.ProductCheckoutResponse, error)
 }

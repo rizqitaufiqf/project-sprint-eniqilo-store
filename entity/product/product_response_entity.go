@@ -18,3 +18,13 @@ type ProductDeleteResponse struct {
 type ProductDeleteData struct {
 	Id string `json:"id"`
 }
+
+type ProductCheckoutData struct {
+	Id        string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type ProductCheckoutResponse struct {
+	Message string               `json:"message"`
+	Data    *ProductCheckoutData `json:"data"`
+}
