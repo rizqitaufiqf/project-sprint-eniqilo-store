@@ -59,7 +59,7 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 func (service *productServiceImpl) Delete(ctx *fiber.Ctx) (product_entity.ProductDeleteResponse, error) {
 	productId := ctx.Params("id")
 	userCtx := ctx.UserContext()
-	productAdded, err := service.ProductRepository.Delete(userCtx, productId)
+	productDeleted, err := service.ProductRepository.Delete(userCtx, productId)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows in result set") {
 			return product_entity.ProductDeleteResponse{}, exc.NotFoundException(fmt.Sprintf("Product with id %s Not Found", productId))
@@ -69,9 +69,9 @@ func (service *productServiceImpl) Delete(ctx *fiber.Ctx) (product_entity.Produc
 	}
 
 	return product_entity.ProductDeleteResponse{
-		Message: "Product successfully added",
+		Message: "Product successfully deleted",
 		Data: &product_entity.ProductDeleteData{
-			Id: productAdded.Id,
+			Id: productDeleted.Id,
 		},
 	}, nil
 
