@@ -2,17 +2,25 @@ version: '3.0'
 
 services:
   web:
-    build: .
     container_name: store-web
+    image: rereasdev/eniqilo-store:latest
     env_file:
       - eniqilo-store.env
     ports:
       - 8080:8080
-    volumes:
-      - .:/usr/src/app
-    command: air main.go -b 0.0.0.0
-    networks:
-      - eniqilo
+
+  # web:
+  #   build: .
+  #   container_name: store-web
+  #   env_file:
+  #     - eniqilo-store.env
+  #   ports:
+  #     - 8080:8080
+  #   volumes:
+  #     - .:/usr/src/app
+  #   command: air main.go -b 0.0.0.0
+  #   networks:
+  #     - eniqilo
 
   db:
     container_name: store-db
@@ -26,9 +34,9 @@ services:
       - 5432:5432
     volumes:
       - ./db-data:/var/lib/postgres/data
-    networks:
-      - eniqilo
+    # networks:
+    #   - eniqilo
 
-networks:
-  eniqilo:
-    external: true
+# networks:
+#   eniqilo:
+#     external: true
