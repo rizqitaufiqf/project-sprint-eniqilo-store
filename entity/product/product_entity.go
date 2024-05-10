@@ -14,3 +14,10 @@ type ProductCustomerSearch struct {
 	Name, Sku, Category, InStock, Price string
 	Limit, Offset                       int
 }
+
+type ProductCheckout struct {
+	CheckoutId, CustomerId string
+	Paid, Change           *int
+	ProductDetails         *[]ProductCheckoutDetailsRequest
+	CreatedAt              string
+}
