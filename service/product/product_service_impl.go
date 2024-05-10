@@ -1,10 +1,15 @@
 package product_service
 
 import (
+	"context"
 	product_entity "eniqilo-store/entity/product"
 	exc "eniqilo-store/exceptions"
+	"eniqilo-store/helpers"
 	product_repository "eniqilo-store/repository/product"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
@@ -49,8 +54,76 @@ func (service *productServiceImpl) Add(ctx *fiber.Ctx, req product_entity.Produc
 		Message: "Product successfully added",
 		Data: &product_entity.ProductData{
 			Id:        productAdded.Id,
-			CreatedAt: productAdded.CreatedAt,
+			CreatedAt: productAdded.CreatedAt.Format(time.RFC3339),
 		},
 	}, nil
 
+}
+
+func (s *productServiceImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearchQuery) (product_entity.ProductCustomerSearchResponse, error) {
+	if err := s.Validator.Struct(searchQuery); err != nil {
+		return product_entity.ProductCustomerSearchResponse{}, exc.BadRequestException(fmt.Sprintf("%s", err))
+	}
+
+	if strings.ToLower(searchQuery.InStock) != "true" && strings.ToLower(searchQuery.InStock) != "false" {
+		searchQuery.InStock = ""
+	}
+
+	if strings.ToLower(searchQuery.Price) != "asc" && strings.ToLower(searchQuery.Price) != "desc" {
+		searchQuery.Price = ""
+	}
+
+	exist := false
+	for _, category := range helpers.ProductCategory {
+		if strings.EqualFold(category, searchQuery.Category) {
+			exist = true
+			break
+		}
+	}
+
+	if !exist {
+		searchQuery.Category = ""
+	}
+
+	productQuery := product_entity.ProductCustomerSearch{
+		Name:     searchQuery.Name,
+		Sku:      searchQuery.Sku,
+		Category: searchQuery.Category,
+		Price:    searchQuery.Price,
+		InStock:  searchQuery.InStock,
+		Limit:    5,
+		Offset:   0,
+	}
+	if searchQuery.Limit != "" {
+		productQuery.Limit, _ = strconv.Atoi(searchQuery.Limit)
+	}
+	if searchQuery.Offset != "" {
+		productQuery.Offset, _ = strconv.Atoi(searchQuery.Offset)
+	}
+
+	productSearched, err := s.ProductRepository.CustomerSearch(ctx, productQuery)
+	if err != nil {
+		return product_entity.ProductCustomerSearchResponse{}, exc.InternalServerException(fmt.Sprintf("Internal server error: %s", err))
+	}
+
+	data := []product_entity.ProductCustomerSearchData{}
+	for _, product := range *productSearched {
+		productRecord := product_entity.ProductCustomerSearchData{
+			Id:        product.Id,
+			Name:      product.Name,
+			Sku:       product.Sku,
+			Category:  product.Category,
+			ImageUrl:  product.ImageUrl,
+			Stock:     product.Stock,
+			Price:     product.Price,
+			Location:  product.Location,
+			CreatedAt: product.CreatedAt.Format(time.RFC3339),
+		}
+		data = append(data, productRecord)
+	}
+
+	return product_entity.ProductCustomerSearchResponse{
+		Message: "success",
+		Data:    &data,
+	}, nil
 }
