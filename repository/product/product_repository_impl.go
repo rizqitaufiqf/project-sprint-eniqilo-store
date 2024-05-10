@@ -79,8 +79,8 @@ func (repository *productRepositoryImpl) Delete(ctx context.Context, productId s
 	return &product, nil
 }
 
-func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.Product, error) {
-	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, created_at FROM products WHERE is_deleted = false`
+func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.ProductSearchData, error) {
+	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') created_at FROM products WHERE is_deleted = false`
 	var whereClause []string
 	var searchParams []interface{}
 
@@ -95,7 +95,7 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	if searchQuery.IsAvailable != "" {
 		isAvail, err := strconv.ParseBool(searchQuery.IsAvailable)
 		if err != nil {
-			return &[]product_entity.Product{}, err
+			return &[]product_entity.ProductSearchData{}, err
 		}
 		whereClause = append(whereClause, fmt.Sprintf("is_available = $%s", strconv.Itoa(len(searchParams)+1)))
 		searchParams = append(searchParams, isAvail)
@@ -109,10 +109,8 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 		searchParams = append(searchParams, searchQuery.Sku)
 	}
 	if searchQuery.InStock != "" {
-		inStock, err := strconv.ParseBool(searchQuery.InStock)
-		if err != nil {
-			return &[]product_entity.Product{}, err
-		}
+		inStock, _ := strconv.ParseBool(searchQuery.InStock)
+
 		var op string
 		if inStock {
 			op = ">"
@@ -149,13 +147,13 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 
 	rows, err := repository.dbPool.Query(ctx, query, searchParams...)
 	if err != nil {
-		return &[]product_entity.Product{}, err
+		return &[]product_entity.ProductSearchData{}, err
 	}
 	defer rows.Close()
 
-	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.Product])
+	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.ProductSearchData])
 	if err != nil {
-		return &[]product_entity.Product{}, err
+		return &[]product_entity.ProductSearchData{}, err
 	}
 
 	return &products, nil

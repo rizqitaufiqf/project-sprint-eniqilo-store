@@ -149,27 +149,9 @@ func (service *productServiceImpl) Search(ctx *fiber.Ctx, searchQueries product_
 		return product_entity.ProductSearchResponse{}, exc.InternalServerException(fmt.Sprintf("Internal server error: %s", err))
 	}
 
-	data := []product_entity.ProductSearchData{}
-	for _, product := range *productSearched {
-		productRecord := product_entity.ProductSearchData{
-			Id:          product.Id,
-			Name:        product.Name,
-			Sku:         product.Sku,
-			Category:    product.Category,
-			ImageUrl:    product.ImageUrl,
-			Stock:       product.Stock,
-			Notes:       product.Notes,
-			Price:       product.Price,
-			Location:    product.Location,
-			IsAvailable: product.IsAvailable,
-			CreatedAt:   product.CreatedAt.Format(time.RFC3339),
-		}
-		data = append(data, productRecord)
-	}
-
 	return product_entity.ProductSearchResponse{
 		Message: "List of products retrieved",
-		Data:    &data,
+		Data:    productSearched,
 	}, nil
 }
 
