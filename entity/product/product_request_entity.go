@@ -36,3 +36,32 @@ type ProductSearchQuery struct {
 	Limit       string `query:"limit" validate:"omitempty,number,min=0"`
 	Offset      string `query:"offset" validate:"omitempty,number,min=0"`
 }
+
+type ProductCheckoutDetailsRequest struct {
+	ProductId string `json:"productId" validate:"required,min=1"`
+	Quantity  int    `json:"quantity" validate:"required,min=1"`
+}
+
+type ProductCheckoutRequest struct {
+	CustomerId     string                           `json:"customerId" validate:"required,min=1"`
+	ProductDetails *[]ProductCheckoutDetailsRequest `json:"productDetails" validate:"required,min=1"`
+	Paid           int                              `json:"paid" validate:"required,min=1"`
+	Change         *int                             `json:"change" validate:"required,min=0"`
+}
+
+type ProductCheckoutHistoryRequest struct {
+	CustomerId string `query:"customerId"`
+	Limit      int    `query:"limit" validate:"omitempty,number,min=0"`
+	Offset     int    `query:"offset" validate:"omitempty,number,min=0"`
+	CreatedAt  string `query:"createdAt "`
+}
+
+type ProductCustomerSearchQuery struct {
+	Name     string `query:"name" validate:"omitempty"`
+	Category string `query:"category" validate:"omitempty"`
+	Sku      string `query:"sku" validate:"omitempty"`
+	Price    string `query:"price" validate:"omitempty"`
+	InStock  string `query:"inStock" validate:"omitempty"`
+	Limit    string `query:"limit" validate:"omitempty,number,min=0"`
+	Offset   string `query:"offset" validate:"omitempty,number,min=0"`
+}
