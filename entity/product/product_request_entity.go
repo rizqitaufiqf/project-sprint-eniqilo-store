@@ -4,7 +4,7 @@ type ProductRegisterRequest struct {
 	Name        string `json:"name" validate:"required,min=1,max=30"`
 	Sku         string `json:"sku" validate:"required,min=1,max=30"`
 	Category    string `json:"category" validate:"required,productCategory"`
-	ImageUrl    string `json:"imageUrl" validate:"required,url"`
+	ImageUrl    string `json:"imageUrl" validate:"required,validateUrl"`
 	Notes       string `json:"notes" validate:"required,min=1,max=200"`
 	Price       int    `json:"price" validate:"required,min=1"`
 	Stock       *int   `json:"stock" validate:"required,min=0,max=100000"`
@@ -16,7 +16,7 @@ type ProductEditRequest struct {
 	Name        string `json:"name" validate:"required,min=1,max=30"`
 	Sku         string `json:"sku" validate:"required,min=1,max=30"`
 	Category    string `json:"category" validate:"required,productCategory"`
-	ImageUrl    string `json:"imageUrl" validate:"required,url"`
+	ImageUrl    string `json:"imageUrl" validate:"required,validateUrl"`
 	Notes       string `json:"notes" validate:"required,min=1,max=200"`
 	Price       int    `json:"price" validate:"required,min=1"`
 	Stock       *int   `json:"stock" validate:"required,min=0,max=100000"`
