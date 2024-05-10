@@ -33,8 +33,8 @@ type ProductSearchQuery struct {
 	Price       string `query:"price" validate:"omitempty"`
 	InStock     string `query:"inStock" validate:"omitempty"`
 	CreatedAt   string `query:"createdAt" validate:"omitempty"`
-	Limit       string `query:"limit" validate:"omitempty,number,min=0"`
-	Offset      string `query:"offset" validate:"omitempty,number,min=0"`
+	Limit       int    `query:"limit" validate:"omitempty,number,min=0"`
+	Offset      int    `query:"offset" validate:"omitempty,number,min=0"`
 }
 
 type ProductCheckoutDetailsRequest struct {
@@ -44,7 +44,7 @@ type ProductCheckoutDetailsRequest struct {
 
 type ProductCheckoutRequest struct {
 	CustomerId     string                           `json:"customerId" validate:"required,min=1"`
-	ProductDetails *[]ProductCheckoutDetailsRequest `json:"productDetails" validate:"required,min=1"`
+	ProductDetails *[]ProductCheckoutDetailsRequest `json:"productDetails" validate:"required,dive"`
 	Paid           int                              `json:"paid" validate:"required,min=1"`
 	Change         *int                             `json:"change" validate:"required,min=0"`
 }

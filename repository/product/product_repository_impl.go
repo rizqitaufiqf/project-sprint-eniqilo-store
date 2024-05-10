@@ -174,7 +174,7 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	}
 	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
 
-	var dataCount, totalPrice, availableCount, outOfStock int
+	var dataCount, totalPrice, availableCount, outOfStock *int
 	tx, err := repository.dbPool.Begin(ctx)
 	if err != nil {
 		return &product_entity.ProductCheckout{}, err
@@ -204,29 +204,30 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 		return &product_entity.ProductCheckout{}, err
 	}
 
+	// if one of the product is not exist, the len will be different
+	if len(*productCheckout.ProductDetails) != *dataCount {
+		err = errors.New("no rows in result set")
+		return &product_entity.ProductCheckout{}, err
+	}
+
 	// one of products is not available
-	if availableCount != len(*productCheckout.ProductDetails) {
+	if *availableCount != len(*productCheckout.ProductDetails) {
 		err = errors.New("doesn’t pass validation: one of productIds is not available")
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// outOfStock
-	if outOfStock > 0 {
+	if *outOfStock > 0 {
 		err = errors.New("doesn’t pass validation: out of stock")
 		return &product_entity.ProductCheckout{}, err
 	}
 
-	// if one of the product is not exist, the len will be different
-	if len(*productCheckout.ProductDetails) != dataCount {
-		err = errors.New("no rows in result set")
-		return &product_entity.ProductCheckout{}, err
-	}
 	// check the paid and change
-	if *productCheckout.Paid < totalPrice {
+	if *productCheckout.Paid < *totalPrice {
 		err = errors.New("doesn’t pass validation: paid didn't enough")
 		return &product_entity.ProductCheckout{}, err
 	}
-	realChange := *productCheckout.Paid - totalPrice
+	realChange := *productCheckout.Paid - *totalPrice
 	if realChange != *productCheckout.Change {
 		err = errors.New("doesn’t pass validation: change is wrong")
 		return &product_entity.ProductCheckout{}, err

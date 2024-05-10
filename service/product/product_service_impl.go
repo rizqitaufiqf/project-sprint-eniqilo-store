@@ -137,12 +137,8 @@ func (service *productServiceImpl) Search(ctx *fiber.Ctx, searchQueries product_
 		Offset:      0,
 	}
 
-	if searchQueries.Limit != "" {
-		product.Limit, _ = strconv.Atoi(searchQueries.Limit)
-	}
-	if searchQueries.Offset != "" {
-		product.Offset, _ = strconv.Atoi(searchQueries.Offset)
-	}
+	product.Limit = searchQueries.Limit
+	product.Offset = searchQueries.Offset * searchQueries.Limit
 
 	productSearched, err := service.ProductRepository.Search(userCtx, product)
 	if err != nil {
@@ -213,6 +209,7 @@ func (service *productServiceImpl) HistorySearch(ctx *fiber.Ctx, searchQuery pro
 	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
 		searchQuery.CreatedAt = "desc"
 	}
+	searchQuery.Offset = searchQuery.Offset * searchQuery.Limit
 	historySearched, err := service.ProductRepository.HistorySearch(ctx.UserContext(), searchQuery)
 	if err != nil {
 		return product_entity.ProductCheckoutHistoryResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
