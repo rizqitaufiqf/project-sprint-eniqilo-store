@@ -95,6 +95,9 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 		if strings.Contains(err.Error(), "no rows in result set") {
 			return product_entity.ProductCheckoutResponse{}, exc.NotFoundException("either customer or product id not found")
 		}
+		if strings.Contains(err.Error(), "doesn’t pass validation") {
+			return product_entity.ProductCheckoutResponse{}, exc.BadRequestException(err.Error())
+		}
 
 		return product_entity.ProductCheckoutResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err.Error()))
 	}

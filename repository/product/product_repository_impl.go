@@ -74,34 +74,10 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	}
 	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
 
-	var dataCount, totalPrice int
+	var dataCount, totalPrice, availableCount, outOfStock int
 	tx, err := repository.dbPool.Begin(ctx)
 	if err != nil {
 		return &product_entity.ProductCheckout{}, err
-	}
-	updateProductQuantityQuery := fmt.Sprintf(`
-	WITH result as (update products p
-	set stock = stock - x.amount 
-	from %s
-	where p.id = x.id
-	returning p.id, p.price, x.amount)
-	select count(id) dataCount, SUM(price * amount) totalPrice FROM result
-	`, subQuery)
-	if err := tx.QueryRow(ctx, updateProductQuantityQuery).Scan(&dataCount, &totalPrice); err != nil {
-		return &product_entity.ProductCheckout{}, err
-	}
-
-	// if one of the product is not exist, the len will be different
-	if len(*productCheckout.ProductDetails) != dataCount {
-		return &product_entity.ProductCheckout{}, errors.New("no rows in result set")
-	}
-	// check the paid and change
-	if *productCheckout.Paid < totalPrice {
-		return &product_entity.ProductCheckout{}, errors.New("paid didn't enough")
-	}
-	realChange := *productCheckout.Paid - totalPrice
-	if realChange != *productCheckout.Change {
-		return &product_entity.ProductCheckout{}, errors.New("change is wrong")
 	}
 
 	defer func() {
@@ -111,6 +87,50 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 			tx.Commit(ctx)
 		}
 	}()
+
+	updateProductQuantityQuery := fmt.Sprintf(`
+	WITH result as (update products p
+	set stock = stock - x.amount 
+	from %s
+	where p.id = x.id
+	returning p.id, p.price, x.amount, p.is_available, p.stock)
+	select count(id) dataCount, 
+		SUM(price * amount) totalPrice,
+		COUNT(CASE WHEN is_available = true THEN 1 END) AS availableCount,
+		COUNT(CASE WHEN stock < 0 THEN 1 END) AS outOfStock
+	FROM result
+	`, subQuery)
+	if err := tx.QueryRow(ctx, updateProductQuantityQuery).Scan(&dataCount, &totalPrice, &availableCount, &outOfStock); err != nil {
+		return &product_entity.ProductCheckout{}, err
+	}
+
+	// one of products is not available
+	if availableCount != len(*productCheckout.ProductDetails) {
+		err = errors.New("doesn’t pass validation: one of productIds is not available")
+		return &product_entity.ProductCheckout{}, err
+	}
+
+	// outOfStock
+	if outOfStock > 0 {
+		err = errors.New("doesn’t pass validation: out of stock")
+		return &product_entity.ProductCheckout{}, err
+	}
+
+	// if one of the product is not exist, the len will be different
+	if len(*productCheckout.ProductDetails) != dataCount {
+		err = errors.New("no rows in result set")
+		return &product_entity.ProductCheckout{}, err
+	}
+	// check the paid and change
+	if *productCheckout.Paid < totalPrice {
+		err = errors.New("doesn’t pass validation: paid didn't enough")
+		return &product_entity.ProductCheckout{}, err
+	}
+	realChange := *productCheckout.Paid - totalPrice
+	if realChange != *productCheckout.Change {
+		err = errors.New("doesn’t pass validation: change is wrong")
+		return &product_entity.ProductCheckout{}, err
+	}
 
 	var productId string
 	var createdAt time.Time
@@ -124,21 +144,12 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	)
 	RETURNING id, created_at
 	`
-	if err := tx.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
+	if err = tx.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	productCheckout.CheckoutId = productId
 	productCheckout.CreatedAt = createdAt.Format(time.RFC3339)
-
-	// updateProductQuantityQuery := fmt.Sprintf(`update products p
-	// set stock = stock - x.amount
-	// from %s
-	// where p.id = x.id
-	// `, subQuery)
-	// if _, err := tx.Exec(ctx, updateProductQuantityQuery); err != nil {
-	// 	return &product_entity.ProductCheckout{}, err
-	// }
 
 	return &productCheckout, nil
 }
