@@ -66,10 +66,8 @@ func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, sea
 	}
 
 	if searchQuery.InStock != "" {
-		inStock, err := strconv.ParseBool(searchQuery.InStock)
-		if err != nil {
-			return &[]product_entity.ProductCustomerSearchData{}, err
-		}
+		inStock, _ := strconv.ParseBool(searchQuery.InStock)
+
 		var operator string
 		if inStock {
 			operator = ">"
