@@ -13,14 +13,14 @@ import (
 // 8 hours
 var expDuration = time.Now().Add(time.Hour * 8).Unix()
 
-type AuthServiceImpl struct {
+type authServiceImpl struct {
 }
 
 func NewAuthService() AuthService {
-	return &AuthServiceImpl{}
+	return &authServiceImpl{}
 }
 
-func (service *AuthServiceImpl) GenerateToken(ctx context.Context, userId string) (string, error) {
+func (service *authServiceImpl) GenerateToken(ctx context.Context, userId string) (string, error) {
 	jwtconf := jwt.MapClaims{
 		"user_id": userId,
 		"exp":     expDuration,
@@ -35,7 +35,7 @@ func (service *AuthServiceImpl) GenerateToken(ctx context.Context, userId string
 	return signToken, nil
 }
 
-func (service *AuthServiceImpl) GetValidUser(ctx *fiber.Ctx) (string, error) {
+func (service *authServiceImpl) GetValidUser(ctx *fiber.Ctx) (string, error) {
 	userInfo := ctx.Locals(helpers.JwtContextKey).(*jwt.Token)
 	// convert userInfo claims to jwt mapclaims
 	jwtconf := userInfo.Claims.((jwt.MapClaims))

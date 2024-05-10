@@ -5,9 +5,11 @@ import (
 	"eniqilo-store/helpers"
 
 	customer_repository "eniqilo-store/repository/customer"
-	staffr_repository "eniqilo-store/repository/staff"
+	product_repository "eniqilo-store/repository/product"
+	staff_repository "eniqilo-store/repository/staff"
 	auth_service "eniqilo-store/service/auth"
 	customer_service "eniqilo-store/service/customer"
+	product_service "eniqilo-store/service/product"
 	staff_service "eniqilo-store/service/staff"
 
 	"github.com/go-playground/validator"
@@ -22,9 +24,13 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 
 	authService := auth_service.NewAuthService()
 
-	staffRepository := staffr_repository.NewStaffRepository()
-	staffService := staff_service.NewStaffService(staffRepository, dbPool, authService, validator)
-	staffController := controller.NewStaffController(staffService, authService)
+	staffRepository := staff_repository.NewStaffRepository(dbPool)
+	staffService := staff_service.NewStaffService(staffRepository, authService, validator)
+	staffController := controller.NewStaffController(staffService)
+
+	productRepository := product_repository.NewProductRepository(dbPool)
+	productService := product_service.NewProductService(productRepository, validator)
+	productController := controller.NewProductController(productService)
 
 	customerRepository := customer_repository.NewCustomerRepository(dbPool)
 	customerService := customer_service.NewCustomerService(customerRepository, validator)
@@ -39,8 +45,12 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	app.Use(helpers.CheckTokenHeader)
 	app.Use(helpers.GetTokenHandler())
 
-	// Staffs API
+	// Customer API
 	customerApi := app.Group("/v1/customer")
 	customerApi.Post("/register", customerController.Register)
 	customerApi.Get("/", customerController.Search)
+
+	// Products API
+	productApi := app.Group("/v1/product")
+	productApi.Post("/", productController.Add)
 }

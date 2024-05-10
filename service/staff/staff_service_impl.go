@@ -11,37 +11,28 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type StaffServiceImpl struct {
+type staffServiceImpl struct {
 	StaffRepository staffRep.StaffRepository
-	DBPool          *pgxpool.Pool
 	AuthService     authService.AuthService
 	Validator       *validator.Validate
 }
 
-func NewStaffService(staffRepository staffRep.StaffRepository, dbPool *pgxpool.Pool, authService authService.AuthService, validator *validator.Validate) StaffService {
-	return &StaffServiceImpl{
+func NewStaffService(staffRepository staffRep.StaffRepository, authService authService.AuthService, validator *validator.Validate) StaffService {
+	return &staffServiceImpl{
 		StaffRepository: staffRepository,
-		DBPool:          dbPool,
 		AuthService:     authService,
 		Validator:       validator,
 	}
 }
 
-func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffRegisterResponse, error) {
+func (service *staffServiceImpl) Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffRegisterResponse, error) {
 	// validate by rule we defined in _request_entity.go
 	if err := service.Validator.Struct(req); err != nil {
 		return staff_entity.StaffRegisterResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
-
-	tx, err := service.DBPool.Begin(ctx)
-	if err != nil {
-		return staff_entity.StaffRegisterResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
-	}
-	defer tx.Rollback(ctx)
 
 	hashPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
@@ -53,7 +44,8 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 		PhoneNumber: req.PhoneNumber,
 		Password:    hashPassword,
 	}
-	staffRegistered, err := staffRep.NewStaffRepository().Register(ctx, tx, staff)
+
+	staffRegistered, err := service.StaffRepository.Register(ctx, staff)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return staff_entity.StaffRegisterResponse{}, exc.ConflictException("Staff with this phone number already registered")
@@ -61,7 +53,7 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 		return staff_entity.StaffRegisterResponse{}, err
 	}
 
-	token, err := authService.NewAuthService().GenerateToken(ctx, staffRegistered.Id)
+	token, err := service.AuthService.GenerateToken(ctx, staffRegistered.Id)
 	if err != nil {
 		return staff_entity.StaffRegisterResponse{}, err
 	}
@@ -76,22 +68,17 @@ func (service *StaffServiceImpl) Register(ctx context.Context, req staff_entity.
 	}, nil
 }
 
-func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error) {
+func (service *staffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error) {
+	// validate by rule we defined in _request_entity.go
 	if err := service.Validator.Struct(req); err != nil {
 		return staff_entity.StaffLoginResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
-
-	tx, err := service.DBPool.Begin(ctx)
-	if err != nil {
-		return staff_entity.StaffLoginResponse{}, err
-	}
-	defer tx.Rollback(ctx)
 
 	staff := staff_entity.Staff{
 		PhoneNumber: req.PhoneNumber,
 	}
 
-	staffLogin, err := staffRep.NewStaffRepository().Login(ctx, tx, staff)
+	staffLogin, err := service.StaffRepository.Login(ctx, staff)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return staff_entity.StaffLoginResponse{}, exc.NotFoundException("Staff is not found")
@@ -108,7 +95,7 @@ func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.Sta
 		return staff_entity.StaffLoginResponse{}, err
 	}
 
-	token, err := authService.NewAuthService().GenerateToken(ctx, staffLogin.Id)
+	token, err := service.AuthService.GenerateToken(ctx, staffLogin.Id)
 	if err != nil {
 		return staff_entity.StaffLoginResponse{}, err
 	}
@@ -121,5 +108,4 @@ func (service *StaffServiceImpl) Login(ctx context.Context, req staff_entity.Sta
 			AccessToken: token,
 		},
 	}, nil
-
 }
