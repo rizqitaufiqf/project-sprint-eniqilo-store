@@ -30,3 +30,13 @@ type ProductCheckoutHistoryRequest struct {
 	Offset     int    `query:"offset" validate:"omitempty,number,min=0"`
 	CreatedAt  string `query:"createdAt "`
 }
+
+type ProductCustomerSearchQuery struct {
+	Name     string `query:"name" validate:"omitempty"`
+	Category string `query:"category" validate:"omitempty"`
+	Sku      string `query:"sku" validate:"omitempty"`
+	Price    string `query:"price" validate:"omitempty"`
+	InStock  string `query:"inStock" validate:"omitempty"`
+	Limit    string `query:"limit" validate:"omitempty,number,min=0"`
+	Offset   string `query:"offset" validate:"omitempty,number,min=0"`
+}

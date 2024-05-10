@@ -41,7 +41,7 @@ func (repository *productRepositoryImpl) Add(ctx context.Context, product produc
 	}
 
 	product.Id = productId
-	product.CreatedAt = createdAt.Format(time.RFC3339)
+	product.CreatedAt = createdAt
 
 	return &product, nil
 }
@@ -190,5 +190,66 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 	}
 
 	return history, nil
+}
 
+func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearch) (*[]product_entity.ProductCustomerSearchData, error) {
+	query := `SELECT id, name, sku, category, image_url, stock, price, location, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') created_at FROM products WHERE is_deleted = FALSE AND is_available = TRUE`
+	var whereClause []string
+	params := []interface{}{}
+
+	if searchQuery.Name != "" {
+		whereClause = append(whereClause, fmt.Sprintf("name ~* $%s", strconv.Itoa(len(params)+1)))
+		params = append(params, searchQuery.Name)
+	}
+
+	if searchQuery.Category != "" {
+		whereClause = append(whereClause, fmt.Sprintf("category = $%s", strconv.Itoa(len(params)+1)))
+		params = append(params, searchQuery.Category)
+	}
+
+	if searchQuery.Sku != "" {
+		whereClause = append(whereClause, fmt.Sprintf("sku = $%s", strconv.Itoa(len(params)+1)))
+		params = append(params, searchQuery.Sku)
+	}
+
+	if searchQuery.InStock != "" {
+		inStock, _ := strconv.ParseBool(searchQuery.InStock)
+
+		var operator string
+		if inStock {
+			operator = ">"
+		} else {
+			operator = "="
+		}
+		whereClause = append(whereClause, fmt.Sprintf("stock %s 0", operator))
+	}
+
+	if len(whereClause) > 0 {
+		query += " AND " + strings.Join(whereClause, " AND ")
+	}
+
+	if searchQuery.Price != "" {
+		query += fmt.Sprintf(" ORDER BY price %s", searchQuery.Price)
+	} else {
+		query += " ORDER BY created_at DESC"
+	}
+
+	if searchQuery.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len(params)+1), strconv.Itoa(len(params)+2))
+		params = append(params, searchQuery.Limit)
+		params = append(params, searchQuery.Offset)
+	}
+
+	rows, err := repository.dbPool.Query(ctx, query, params...)
+	if err != nil {
+		return &[]product_entity.ProductCustomerSearchData{}, err
+	}
+	defer rows.Close()
+
+	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.ProductCustomerSearchData])
+	if err != nil {
+		return &[]product_entity.ProductCustomerSearchData{}, err
+	}
+
+	return &products, nil
 }
