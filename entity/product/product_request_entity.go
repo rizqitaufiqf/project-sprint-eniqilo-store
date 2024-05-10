@@ -11,3 +11,13 @@ type ProductRegisterRequest struct {
 	Location    string `json:"location" validate:"required,min=1,max=200"`
 	IsAvailable *bool  `json:"isAvailable" validate:"required"`
 }
+
+type ProductCustomerSearchQuery struct {
+	Name     string `query:"name" validate:"omitempty"`
+	Category string `query:"category" validate:"omitempty"`
+	Sku      string `query:"sku" validate:"omitempty"`
+	Price    string `query:"price" validate:"omitempty"`
+	InStock  string `query:"inStock" validate:"omitempty"`
+	Limit    string `query:"limit" validate:"omitempty,number,min=0"`
+	Offset   string `query:"offset" validate:"omitempty,number,min=0"`
+}
