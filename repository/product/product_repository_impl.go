@@ -155,7 +155,13 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 }
 
 func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, searchQuery product_entity.ProductCheckoutHistoryRequest) ([]product_entity.ProductCheckoutDataResponse, error) {
-	query := `SELECT * FROM transactions`
+	query := `SELECT id transactionId, 
+		customer_id customerId, 
+		product_details productDetails, 
+		paid,
+		change,
+		to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt
+		FROM transactions`
 	params := []interface{}{}
 
 	if searchQuery.CustomerId != "" {
