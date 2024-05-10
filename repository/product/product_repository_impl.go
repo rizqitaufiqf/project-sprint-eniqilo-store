@@ -5,6 +5,8 @@ import (
 	product_entity "eniqilo-store/entity/product"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -65,57 +67,69 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 		return &product_entity.ProductCheckout{}, err
 	}
 
-	var productIds []string
-	idToQuantity := make(map[string]int)
+	var updatedQuantityId []string
 	for _, item := range *productCheckout.ProductDetails {
-		id := item.ProductId
-		productIds = append(productIds, id)
-		idToQuantity[item.ProductId] = item.Quantity
+		x := fmt.Sprintf(`('%s',%d)`, item.ProductId, item.Quantity)
+		updatedQuantityId = append(updatedQuantityId, x)
 	}
-	productPriceQuery := `select id, price, stock, is_available from products where id = any($1)`
-	rows, err := repository.dbPool.Query(ctx, productPriceQuery, productIds)
+	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
+
+	var dataCount, totalPrice, availableCount, outOfStock int
+	tx, err := repository.dbPool.Begin(ctx)
 	if err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
-	type ProductPrice struct {
-		Id          string
-		Price       int
-		Stock       int
-		IsAvailable bool
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+	}()
+
+	updateProductQuantityQuery := fmt.Sprintf(`
+	WITH result as (update products p
+	set stock = stock - x.amount 
+	from %s
+	where p.id = x.id
+	returning p.id, p.price, x.amount, p.is_available, p.stock)
+	select count(id) dataCount, 
+		SUM(price * amount) totalPrice,
+		COUNT(CASE WHEN is_available = true THEN 1 END) AS availableCount,
+		COUNT(CASE WHEN stock < 0 THEN 1 END) AS outOfStock
+	FROM result
+	`, subQuery)
+	if err := tx.QueryRow(ctx, updateProductQuantityQuery).Scan(&dataCount, &totalPrice, &availableCount, &outOfStock); err != nil {
+		return &product_entity.ProductCheckout{}, err
 	}
-	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[ProductPrice])
-	if err != nil {
+
+	// one of products is not available
+	if availableCount != len(*productCheckout.ProductDetails) {
+		err = errors.New("doesn’t pass validation: one of productIds is not available")
+		return &product_entity.ProductCheckout{}, err
+	}
+
+	// outOfStock
+	if outOfStock > 0 {
+		err = errors.New("doesn’t pass validation: out of stock")
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// if one of the product is not exist, the len will be different
-	if len(products) != len(productIds) {
-		return &product_entity.ProductCheckout{}, errors.New("no rows in result set")
+	if len(*productCheckout.ProductDetails) != dataCount {
+		err = errors.New("no rows in result set")
+		return &product_entity.ProductCheckout{}, err
 	}
-	var totalPrice int
-	var updatedQuantityId string
-
-	for _, item := range products {
-		isAvailable := item.IsAvailable
-		if !isAvailable {
-			return &product_entity.ProductCheckout{}, errors.New("one of the product isn't available")
-		}
-		if item.Stock < idToQuantity[item.Id] {
-			return &product_entity.ProductCheckout{}, errors.New("stock didn't enough")
-		}
-
-		totalPrice += item.Price
-		updatedQuantityId += fmt.Sprintf("when id = '%s' then %d \n", item.Id, item.Stock-idToQuantity[item.Id])
-	}
-
 	// check the paid and change
-	if productCheckout.Paid < totalPrice {
-		return &product_entity.ProductCheckout{}, errors.New("paid didn't enough")
+	if *productCheckout.Paid < totalPrice {
+		err = errors.New("doesn’t pass validation: paid didn't enough")
+		return &product_entity.ProductCheckout{}, err
 	}
-	realChange := productCheckout.Paid - totalPrice
-	if realChange != productCheckout.Change {
-		return &product_entity.ProductCheckout{}, errors.New("change is wrong")
+	realChange := *productCheckout.Paid - totalPrice
+	if realChange != *productCheckout.Change {
+		err = errors.New("doesn’t pass validation: change is wrong")
+		return &product_entity.ProductCheckout{}, err
 	}
 
 	var productId string
@@ -130,24 +144,51 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	)
 	RETURNING id, created_at
 	`
-	if err := repository.dbPool.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
+	if err = tx.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	productCheckout.CheckoutId = productId
 	productCheckout.CreatedAt = createdAt.Format(time.RFC3339)
 
-	var tmpProductId string
-	updateProductQuantityQuery := fmt.Sprintf(`update products
-	set stock = 
-		case
-		%s
-		end
-	returning id
-	`, updatedQuantityId)
-	if err := repository.dbPool.QueryRow(ctx, updateProductQuantityQuery).Scan(&tmpProductId); err != nil {
-		return &product_entity.ProductCheckout{}, err
+	return &productCheckout, nil
+}
+
+func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, searchQuery product_entity.ProductCheckoutHistoryRequest) ([]product_entity.ProductCheckoutDataResponse, error) {
+	query := `SELECT id transactionId, 
+		customer_id customerId, 
+		product_details productDetails, 
+		paid,
+		change,
+		to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt
+		FROM transactions`
+	params := []interface{}{}
+
+	if searchQuery.CustomerId != "" {
+		query += fmt.Sprintf(" WHERE customer_id = $%s", strconv.Itoa(len(params)+1))
+		params = append(params, searchQuery.CustomerId)
 	}
 
-	return &productCheckout, nil
+	query += " ORDER BY created_at"
+	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
+		query += " DESC"
+	}
+
+	len_p := len(params)
+	query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len_p+1), strconv.Itoa(len_p+2))
+	params = append(params, searchQuery.Limit, searchQuery.Offset)
+
+	rows, err := repository.dbPool.Query(ctx, query, params...)
+	if err != nil {
+		return []product_entity.ProductCheckoutDataResponse{}, err
+	}
+	defer rows.Close()
+
+	history, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.ProductCheckoutDataResponse])
+	if err != nil {
+		return []product_entity.ProductCheckoutDataResponse{}, err
+	}
+
+	return history, nil
+
 }

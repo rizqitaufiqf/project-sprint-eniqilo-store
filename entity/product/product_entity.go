@@ -10,7 +10,7 @@ type Product struct {
 
 type ProductCheckout struct {
 	CheckoutId, CustomerId string
-	Paid, Change           int
+	Paid, Change           *int
 	ProductDetails         *[]ProductCheckoutDetailsRequest
 	CreatedAt              string
 }

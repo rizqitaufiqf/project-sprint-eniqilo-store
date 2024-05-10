@@ -42,7 +42,7 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	staffApi.Post("/login", staffController.Login)
 
 	// JWT middleware
-	app.Use(helpers.CheckTokenHeader)
+	// app.Use(helpers.CheckTokenHeader)
 	app.Use(helpers.GetTokenHandler())
 
 	// Customer API
@@ -55,4 +55,5 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	productApi.Post("/", productController.Add)
 	productApi.Delete("/:id", productController.Delete)
 	productApi.Post("checkout", productController.Checkout)
+	productApi.Get("checkout/history", productController.History)
 }

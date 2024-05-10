@@ -3,6 +3,7 @@ package customer_repository
 import (
 	"context"
 	customer_entity "eniqilo-store/entity/customer"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,10 +32,10 @@ func (repository *CustomerRepositoryImpl) Register(ctx context.Context, customer
 func (repository *CustomerRepositoryImpl) Search(ctx context.Context, customer customer_entity.CustomerSearchRequest) ([]customer_entity.CustomerData, error) {
 	query := `SELECT id userId, phone_number phoneNumber, name
 	FROM customers
-	WHERE name ~* $1 AND phone_number ~* $2
+	WHERE name ~* $1 AND phone_number LIKE $2
 	ORDER BY created_at DESC
 	`
-	rows, err := repository.dbPool.Query(ctx, query, customer.Name, customer.PhoneNumber)
+	rows, err := repository.dbPool.Query(ctx, query, customer.Name, fmt.Sprintf("+%s%%", customer.PhoneNumber))
 	if err != nil {
 		return []customer_entity.CustomerData{}, err
 	}

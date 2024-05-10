@@ -85,7 +85,7 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 	productCheckout := product_entity.ProductCheckout{
 		CustomerId:     req.CustomerId,
 		ProductDetails: req.ProductDetails,
-		Paid:           req.Paid,
+		Paid:           &req.Paid,
 		Change:         req.Change,
 	}
 
@@ -93,7 +93,10 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 	productAdded, err := service.ProductRepository.Checkout(userCtx, productCheckout)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows in result set") {
-			return product_entity.ProductCheckoutResponse{}, exc.NotFoundException(fmt.Sprintf("either customer or product id not found"))
+			return product_entity.ProductCheckoutResponse{}, exc.NotFoundException("either customer or product id not found")
+		}
+		if strings.Contains(err.Error(), "doesn’t pass validation") {
+			return product_entity.ProductCheckoutResponse{}, exc.BadRequestException(err.Error())
 		}
 
 		return product_entity.ProductCheckoutResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err.Error()))
@@ -106,4 +109,21 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 		},
 	}, nil
 
+}
+
+func (service *productServiceImpl) HistorySearch(ctx *fiber.Ctx, searchQuery product_entity.ProductCheckoutHistoryRequest) (product_entity.ProductCheckoutHistoryResponse, error) {
+	if err := service.Validator.Struct(searchQuery); err != nil {
+		return product_entity.ProductCheckoutHistoryResponse{}, exc.BadRequestException(fmt.Sprintf("%s", err))
+	}
+	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
+		searchQuery.CreatedAt = "desc"
+	}
+	historySearched, err := service.ProductRepository.HistorySearch(ctx.UserContext(), searchQuery)
+	if err != nil {
+		return product_entity.ProductCheckoutHistoryResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
+	}
+	return product_entity.ProductCheckoutHistoryResponse{
+		Message: "Checkout history successfully retrieved",
+		Data:    &historySearched,
+	}, nil
 }
