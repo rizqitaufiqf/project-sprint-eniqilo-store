@@ -46,13 +46,13 @@ func (repository *productRepositoryImpl) Add(ctx context.Context, product produc
 	return &product, nil
 }
 
-func (repository *productRepositoryImpl) Delete(ctx context.Context, productId string) (*product_entity.Product, error) {
-	query := `update products set is_deleted=true where is_deleted = false AND id=$1 returning id`
+func (repository *productRepositoryImpl) Delete(ctx context.Context, productId string) (*product_entity.ProductDeleteData, error) {
+	query := `update products set is_deleted=true where id=$1 AND is_deleted = false returning id`
 	if err := repository.dbPool.QueryRow(ctx, query, productId).Scan(&productId); err != nil {
-		return &product_entity.Product{}, err
+		return &product_entity.ProductDeleteData{}, err
 	}
 
-	product := product_entity.Product{}
+	product := product_entity.ProductDeleteData{}
 
 	product.Id = productId
 

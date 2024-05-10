@@ -70,9 +70,7 @@ func (service *productServiceImpl) Delete(ctx *fiber.Ctx) (product_entity.Produc
 
 	return product_entity.ProductDeleteResponse{
 		Message: "Product successfully deleted",
-		Data: &product_entity.ProductDeleteData{
-			Id: productDeleted.Id,
-		},
+		Data:    productDeleted,
 	}, nil
 
 }
