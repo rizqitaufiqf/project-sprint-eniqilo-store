@@ -14,6 +14,14 @@ func validatePhoneNumber(fl validator.FieldLevel) bool {
 	return matched
 }
 
+func validateUrl(fl validator.FieldLevel) bool {
+	value := fl.Field().String()
+
+	pattern := `^(?:https?:\/\/)?(?:www\.)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s]*)?$`
+	matched, _ := regexp.MatchString(pattern, value)
+	return matched
+}
+
 func validateProductCategory(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
 
@@ -31,4 +39,5 @@ func RegisterCustomValidator(validator *validator.Validate) {
 
 	validator.RegisterValidation("phoneNumber", validatePhoneNumber)
 	validator.RegisterValidation("productCategory", validateProductCategory)
+	validator.RegisterValidation("validateUrl", validateUrl)
 }

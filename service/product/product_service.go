@@ -9,6 +9,8 @@ import (
 
 type ProductService interface {
 	Add(ctx *fiber.Ctx, req product_entity.ProductRegisterRequest) (product_entity.ProductRegisterResponse, error)
+	Edit(ctx *fiber.Ctx, req product_entity.ProductEditRequest) (product_entity.ProductEditResponse, error)
+	Search(ctx *fiber.Ctx, searchQueries product_entity.ProductSearchQuery) (product_entity.ProductSearchResponse, error)
 	Delete(ctx *fiber.Ctx) (product_entity.ProductDeleteResponse, error)
 	Checkout(ctx *fiber.Ctx, req product_entity.ProductCheckoutRequest) (product_entity.ProductCheckoutResponse, error)
 	HistorySearch(ctx *fiber.Ctx, req product_entity.ProductCheckoutHistoryRequest) (product_entity.ProductCheckoutHistoryResponse, error)
