@@ -138,3 +138,20 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 	}, nil
 
 }
+
+func (service *productServiceImpl) HistorySearch(ctx *fiber.Ctx, searchQuery product_entity.ProductCheckoutHistoryRequest) (product_entity.ProductCheckoutHistoryResponse, error) {
+	if err := service.Validator.Struct(searchQuery); err != nil {
+		return product_entity.ProductCheckoutHistoryResponse{}, exc.BadRequestException(fmt.Sprintf("%s", err))
+	}
+	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
+		searchQuery.CreatedAt = "desc"
+	}
+	historySearched, err := service.ProductRepository.HistorySearch(ctx.UserContext(), searchQuery)
+	if err != nil {
+		return product_entity.ProductCheckoutHistoryResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
+	}
+	return product_entity.ProductCheckoutHistoryResponse{
+		Message: "Checkout history successfully retrieved",
+		Data:    &historySearched,
+	}, nil
+}

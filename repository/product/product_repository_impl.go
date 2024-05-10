@@ -5,6 +5,8 @@ import (
 	product_entity "eniqilo-store/entity/product"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -150,4 +152,40 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	}
 
 	return &productCheckout, nil
+}
+
+func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, searchQuery product_entity.ProductCheckoutHistoryRequest) ([]product_entity.ProductCheckoutDataResponse, error) {
+	query := `SELECT * FROM transactions`
+	params := []interface{}{}
+
+	if searchQuery.CustomerId != "" {
+		query += fmt.Sprintf(" WHERE customer_id = $%s", strconv.Itoa(len(params)+1))
+		params = append(params, searchQuery.CustomerId)
+	}
+
+	len_p := len(params)
+	query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len_p+1), strconv.Itoa(len_p+2))
+	params = append(params, searchQuery.Limit, searchQuery.Offset)
+
+	query += fmt.Sprintf(" ORDER BY $%s", strconv.Itoa(len(params)+1))
+	params = append(params, searchQuery.Offset)
+
+	query += " ORDER BY created_at"
+	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
+		query += " DESC"
+	}
+
+	rows, err := repository.dbPool.Query(ctx, query, params...)
+	if err != nil {
+		return []product_entity.ProductCheckoutDataResponse{}, err
+	}
+	defer rows.Close()
+
+	history, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.ProductCheckoutDataResponse])
+	if err != nil {
+		return []product_entity.ProductCheckoutDataResponse{}, err
+	}
+
+	return history, nil
+
 }

@@ -9,4 +9,5 @@ type ProductRepository interface {
 	Add(ctx context.Context, req product_entity.Product) (*product_entity.Product, error)
 	Delete(ctx context.Context, catId string) (*product_entity.Product, error)
 	Checkout(ctx context.Context, req product_entity.ProductCheckout) (*product_entity.ProductCheckout, error)
+	HistorySearch(ctx context.Context, req product_entity.ProductCheckoutHistoryRequest) ([]product_entity.ProductCheckoutDataResponse, error)
 }

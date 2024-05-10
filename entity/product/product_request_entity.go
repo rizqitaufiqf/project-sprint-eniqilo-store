@@ -23,3 +23,10 @@ type ProductCheckoutRequest struct {
 	Paid           int                              `json:"paid" validate:"required,min=1"`
 	Change         int                              `json:"change" validate:"required,min=1"`
 }
+
+type ProductCheckoutHistoryRequest struct {
+	CustomerId string `query:"customerId"`
+	Limit      int    `query:"limit" validate:"omitempty,number,min=0"`
+	Offset     int    `query:"offset" validate:"omitempty,number,min=0"`
+	CreatedAt  string `query:"createdAt "`
+}
