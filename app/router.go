@@ -4,9 +4,11 @@ import (
 	"eniqilo-store/controller"
 	"eniqilo-store/helpers"
 
+	customer_repository "eniqilo-store/repository/customer"
 	product_repository "eniqilo-store/repository/product"
 	staff_repository "eniqilo-store/repository/staff"
 	auth_service "eniqilo-store/service/auth"
+	customer_service "eniqilo-store/service/customer"
 	product_service "eniqilo-store/service/product"
 	staff_service "eniqilo-store/service/staff"
 
@@ -30,6 +32,10 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	productService := product_service.NewProductService(productRepository, validator)
 	productController := controller.NewProductController(productService)
 
+	customerRepository := customer_repository.NewCustomerRepository(dbPool)
+	customerService := customer_service.NewCustomerService(customerRepository, validator)
+	customerController := controller.NewCustomerController(customerService)
+
 	// Staffs API
 	staffApi := app.Group("/v1/staff")
 	staffApi.Post("/register", staffController.Register)
@@ -38,6 +44,11 @@ func RegisterBluePrint(app *fiber.App, dbPool *pgxpool.Pool) {
 	// JWT middleware
 	app.Use(helpers.CheckTokenHeader)
 	app.Use(helpers.GetTokenHandler())
+
+	// Customer API
+	customerApi := app.Group("/v1/customer")
+	customerApi.Post("/register", customerController.Register)
+	customerApi.Get("/", customerController.Search)
 
 	// Products API
 	productApi := app.Group("/v1/product")
