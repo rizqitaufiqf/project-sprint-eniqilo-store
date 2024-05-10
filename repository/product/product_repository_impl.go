@@ -75,8 +75,19 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
 
 	var dataCount, totalPrice int
-	productPriceQuery := fmt.Sprintf(`select count(p.id) dataCount, SUM(p.price * x.amount) totalPrice from products p join %s ON x.id = p.id::text WHERE p.is_available = true AND p.stock >= x.amount`, subQuery)
-	if err := repository.dbPool.QueryRow(ctx, productPriceQuery).Scan(&dataCount, &totalPrice); err != nil {
+	tx, err := repository.dbPool.Begin(ctx)
+	if err != nil {
+		return &product_entity.ProductCheckout{}, err
+	}
+	updateProductQuantityQuery := fmt.Sprintf(`
+	WITH result as (update products p
+	set stock = stock - x.amount 
+	from %s
+	where p.id = x.id
+	returning p.id, p.price, x.amount)
+	select count(id) dataCount, SUM(price * amount) totalPrice FROM result
+	`, subQuery)
+	if err := tx.QueryRow(ctx, updateProductQuantityQuery).Scan(&dataCount, &totalPrice); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
@@ -91,11 +102,6 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	realChange := *productCheckout.Paid - totalPrice
 	if realChange != *productCheckout.Change {
 		return &product_entity.ProductCheckout{}, errors.New("change is wrong")
-	}
-
-	tx, err := repository.dbPool.Begin(ctx)
-	if err != nil {
-		return &product_entity.ProductCheckout{}, err
 	}
 
 	defer func() {
@@ -125,14 +131,14 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	productCheckout.CheckoutId = productId
 	productCheckout.CreatedAt = createdAt.Format(time.RFC3339)
 
-	updateProductQuantityQuery := fmt.Sprintf(`update products p
-	set stock = stock - x.amount 
-	from %s
-	where p.id = x.id
-	`, subQuery)
-	if _, err := tx.Exec(ctx, updateProductQuantityQuery); err != nil {
-		return &product_entity.ProductCheckout{}, err
-	}
+	// updateProductQuantityQuery := fmt.Sprintf(`update products p
+	// set stock = stock - x.amount
+	// from %s
+	// where p.id = x.id
+	// `, subQuery)
+	// if _, err := tx.Exec(ctx, updateProductQuantityQuery); err != nil {
+	// 	return &product_entity.ProductCheckout{}, err
+	// }
 
 	return &productCheckout, nil
 }
