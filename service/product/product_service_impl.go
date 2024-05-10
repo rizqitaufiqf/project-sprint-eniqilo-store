@@ -85,7 +85,7 @@ func (service *productServiceImpl) Checkout(ctx *fiber.Ctx, req product_entity.P
 	productCheckout := product_entity.ProductCheckout{
 		CustomerId:     req.CustomerId,
 		ProductDetails: req.ProductDetails,
-		Paid:           req.Paid,
+		Paid:           &req.Paid,
 		Change:         req.Change,
 	}
 

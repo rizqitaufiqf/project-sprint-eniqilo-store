@@ -67,58 +67,44 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 		return &product_entity.ProductCheckout{}, err
 	}
 
-	var productIds []string
-	idToQuantity := make(map[string]int)
+	var updatedQuantityId []string
 	for _, item := range *productCheckout.ProductDetails {
-		id := item.ProductId
-		productIds = append(productIds, id)
-		idToQuantity[item.ProductId] = item.Quantity
+		x := fmt.Sprintf(`('%s',%d)`, item.ProductId, item.Quantity)
+		updatedQuantityId = append(updatedQuantityId, x)
 	}
-	productPriceQuery := `select id, price, stock, is_available from products where id = any($1)`
-	rows, err := repository.dbPool.Query(ctx, productPriceQuery, productIds)
-	if err != nil {
-		return &product_entity.ProductCheckout{}, err
-	}
+	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
 
-	type ProductPrice struct {
-		Id          string
-		Price       int
-		Stock       int
-		IsAvailable bool
-	}
-	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[ProductPrice])
-	if err != nil {
+	var dataCount, totalPrice int
+	productPriceQuery := fmt.Sprintf(`select count(p.id) dataCount, SUM(p.price * x.amount) totalPrice from products p join %s ON x.id = p.id::text WHERE p.is_available = true AND p.stock >= x.amount`, subQuery)
+	if err := repository.dbPool.QueryRow(ctx, productPriceQuery).Scan(&dataCount, &totalPrice); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// if one of the product is not exist, the len will be different
-	if len(products) != len(productIds) {
+	if len(*productCheckout.ProductDetails) != dataCount {
 		return &product_entity.ProductCheckout{}, errors.New("no rows in result set")
 	}
-	var totalPrice int
-	var updatedQuantityId string
-
-	for _, item := range products {
-		isAvailable := item.IsAvailable
-		if !isAvailable {
-			return &product_entity.ProductCheckout{}, errors.New("one of the product isn't available")
-		}
-		if item.Stock < idToQuantity[item.Id] {
-			return &product_entity.ProductCheckout{}, errors.New("stock didn't enough")
-		}
-
-		totalPrice += item.Price
-		updatedQuantityId += fmt.Sprintf("when id = '%s' then %d \n", item.Id, item.Stock-idToQuantity[item.Id])
-	}
-
 	// check the paid and change
-	if productCheckout.Paid < totalPrice {
+	if *productCheckout.Paid < totalPrice {
 		return &product_entity.ProductCheckout{}, errors.New("paid didn't enough")
 	}
-	realChange := productCheckout.Paid - totalPrice
-	if realChange != productCheckout.Change {
+	realChange := *productCheckout.Paid - totalPrice
+	if realChange != *productCheckout.Change {
 		return &product_entity.ProductCheckout{}, errors.New("change is wrong")
 	}
+
+	tx, err := repository.dbPool.Begin(ctx)
+	if err != nil {
+		return &product_entity.ProductCheckout{}, err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+	}()
 
 	var productId string
 	var createdAt time.Time
@@ -132,22 +118,19 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	)
 	RETURNING id, created_at
 	`
-	if err := repository.dbPool.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
+	if err := tx.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	productCheckout.CheckoutId = productId
 	productCheckout.CreatedAt = createdAt.Format(time.RFC3339)
 
-	var tmpProductId string
-	updateProductQuantityQuery := fmt.Sprintf(`update products
-	set stock = 
-		case
-		%s
-		end
-	returning id
-	`, updatedQuantityId)
-	if err := repository.dbPool.QueryRow(ctx, updateProductQuantityQuery).Scan(&tmpProductId); err != nil {
+	updateProductQuantityQuery := fmt.Sprintf(`update products p
+	set stock = stock - x.amount 
+	from %s
+	where p.id = x.id
+	`, subQuery)
+	if _, err := tx.Exec(ctx, updateProductQuantityQuery); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
@@ -160,7 +143,7 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 		product_details productDetails, 
 		paid,
 		change,
-		to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt
+		to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt
 		FROM transactions`
 	params := []interface{}{}
 
@@ -169,17 +152,14 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 		params = append(params, searchQuery.CustomerId)
 	}
 
-	len_p := len(params)
-	query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len_p+1), strconv.Itoa(len_p+2))
-	params = append(params, searchQuery.Limit, searchQuery.Offset)
-
-	query += fmt.Sprintf(" ORDER BY $%s", strconv.Itoa(len(params)+1))
-	params = append(params, searchQuery.Offset)
-
 	query += " ORDER BY created_at"
 	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
 		query += " DESC"
 	}
+
+	len_p := len(params)
+	query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len_p+1), strconv.Itoa(len_p+2))
+	params = append(params, searchQuery.Limit, searchQuery.Offset)
 
 	rows, err := repository.dbPool.Query(ctx, query, params...)
 	if err != nil {

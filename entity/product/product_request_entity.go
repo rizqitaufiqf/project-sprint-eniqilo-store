@@ -21,7 +21,7 @@ type ProductCheckoutRequest struct {
 	CustomerId     string                           `json:"customerId" validate:"required,min=1"`
 	ProductDetails *[]ProductCheckoutDetailsRequest `json:"productDetails" validate:"required,min=1"`
 	Paid           int                              `json:"paid" validate:"required,min=1"`
-	Change         int                              `json:"change" validate:"required,min=1"`
+	Change         *int                             `json:"change" validate:"required,min=0"`
 }
 
 type ProductCheckoutHistoryRequest struct {
