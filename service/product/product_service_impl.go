@@ -106,24 +106,8 @@ func (s *productServiceImpl) CustomerSearch(ctx context.Context, searchQuery pro
 		return product_entity.ProductCustomerSearchResponse{}, exc.InternalServerException(fmt.Sprintf("Internal server error: %s", err))
 	}
 
-	data := []product_entity.ProductCustomerSearchData{}
-	for _, product := range *productSearched {
-		productRecord := product_entity.ProductCustomerSearchData{
-			Id:        product.Id,
-			Name:      product.Name,
-			Sku:       product.Sku,
-			Category:  product.Category,
-			ImageUrl:  product.ImageUrl,
-			Stock:     product.Stock,
-			Price:     product.Price,
-			Location:  product.Location,
-			CreatedAt: product.CreatedAt.Format(time.RFC3339),
-		}
-		data = append(data, productRecord)
-	}
-
 	return product_entity.ProductCustomerSearchResponse{
 		Message: "success",
-		Data:    &data,
+		Data:    productSearched,
 	}, nil
 }

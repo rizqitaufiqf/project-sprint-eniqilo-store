@@ -7,5 +7,5 @@ import (
 
 type ProductRepository interface {
 	Add(ctx context.Context, req product_entity.Product) (*product_entity.Product, error)
-	CustomerSearch(ctx context.Context, query product_entity.ProductCustomerSearch) (*[]product_entity.Product, error)
+	CustomerSearch(ctx context.Context, query product_entity.ProductCustomerSearch) (*[]product_entity.ProductCustomerSearchData, error)
 }
