@@ -103,7 +103,8 @@ func (service *staffServiceImpl) Login(ctx context.Context, req staff_entity.Sta
 	return staff_entity.StaffLoginResponse{
 		Message: "Staff logged successfully",
 		Data: &staff_entity.StaffData{
-			PhoneNumber: staffLogin.PhoneNumber,
+			Id:          staffLogin.Id,
+			PhoneNumber: req.PhoneNumber,
 			Name:        staffLogin.Name,
 			AccessToken: token,
 		},

@@ -283,7 +283,7 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 	return history, nil
 }
 
-func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearch) (*[]product_entity.ProductCustomerSearchData, error) {
+func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearchQuery) (*[]product_entity.ProductCustomerSearchData, error) {
 	query := `SELECT id, name, sku, category, image_url, stock, price, location, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt FROM products WHERE is_deleted = FALSE AND is_available = TRUE`
 	var whereClause []string
 	params := []interface{}{}
@@ -303,32 +303,26 @@ func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, sea
 		params = append(params, searchQuery.Sku)
 	}
 
-	if searchQuery.InStock != "" {
-		inStock, _ := strconv.ParseBool(searchQuery.InStock)
-
-		var operator string
-		if inStock {
-			operator = ">"
-		} else {
-			operator = "="
-		}
-		whereClause = append(whereClause, fmt.Sprintf("stock %s 0", operator))
+	if searchQuery.InStock {
+		whereClause = append(whereClause, fmt.Sprintf("stock > 0"))
 	}
 
 	if len(whereClause) > 0 {
 		query += " AND " + strings.Join(whereClause, " AND ")
 	}
 
-	if searchQuery.Price != "" {
+	if searchQuery.Price == "asc" || searchQuery.Price == "desc" {
 		query += fmt.Sprintf(" ORDER BY price %s", searchQuery.Price)
 	} else {
 		query += " ORDER BY created_at DESC"
 	}
 
 	if searchQuery.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len(params)+1), strconv.Itoa(len(params)+2))
-		params = append(params, searchQuery.Limit)
-		params = append(params, searchQuery.Offset)
+		query += fmt.Sprintf(" LIMIT %d", searchQuery.Limit)
+	}
+
+	if searchQuery.Offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", searchQuery.Offset)
 	}
 
 	rows, err := repository.dbPool.Query(ctx, query, params...)

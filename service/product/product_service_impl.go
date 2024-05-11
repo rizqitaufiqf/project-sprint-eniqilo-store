@@ -227,43 +227,7 @@ func (s *productServiceImpl) CustomerSearch(ctx context.Context, searchQuery pro
 		return product_entity.ProductCustomerSearchResponse{}, exc.BadRequestException(fmt.Sprintf("%s", err))
 	}
 
-	if strings.ToLower(searchQuery.InStock) != "true" && strings.ToLower(searchQuery.InStock) != "false" {
-		searchQuery.InStock = ""
-	}
-
-	if strings.ToLower(searchQuery.Price) != "asc" && strings.ToLower(searchQuery.Price) != "desc" {
-		searchQuery.Price = ""
-	}
-
-	exist := false
-	for _, category := range helpers.ProductCategory {
-		if strings.EqualFold(category, searchQuery.Category) {
-			exist = true
-			break
-		}
-	}
-
-	if !exist {
-		searchQuery.Category = ""
-	}
-
-	productQuery := product_entity.ProductCustomerSearch{
-		Name:     searchQuery.Name,
-		Sku:      searchQuery.Sku,
-		Category: searchQuery.Category,
-		Price:    searchQuery.Price,
-		InStock:  searchQuery.InStock,
-		Limit:    5,
-		Offset:   0,
-	}
-	if searchQuery.Limit > 0 {
-		productQuery.Limit = searchQuery.Limit
-	}
-	if searchQuery.Offset > 0 {
-		productQuery.Offset = searchQuery.Offset
-	}
-
-	productSearched, err := s.ProductRepository.CustomerSearch(ctx, productQuery)
+	productSearched, err := s.ProductRepository.CustomerSearch(ctx, searchQuery)
 	if err != nil {
 		return product_entity.ProductCustomerSearchResponse{}, exc.InternalServerException(fmt.Sprintf("Internal server error: %s", err))
 	}

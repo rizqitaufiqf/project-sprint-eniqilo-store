@@ -29,11 +29,11 @@ func (repository *staffRepositoryImpl) Register(ctx context.Context, staff staff
 }
 
 func (repository *staffRepositoryImpl) Login(ctx context.Context, staff staff_entity.Staff) (staff_entity.Staff, error) {
-	query := "SELECT id, name, phone_number, password FROM staffs WHERE phone_number = $1 LIMIT 1"
+	query := "SELECT id, name, password FROM staffs WHERE phone_number = $1 LIMIT 1"
 	row := repository.DBpool.QueryRow(ctx, query, staff.PhoneNumber)
 
 	var loggedInStaff staff_entity.Staff
-	err := row.Scan(&loggedInStaff.Id, &loggedInStaff.Name, &loggedInStaff.PhoneNumber, &loggedInStaff.Password)
+	err := row.Scan(&loggedInStaff.Id, &loggedInStaff.Name, &loggedInStaff.Password)
 	if err != nil {
 		return staff_entity.Staff{}, err
 	}

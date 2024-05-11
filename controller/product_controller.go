@@ -101,6 +101,8 @@ func (controller *ProductController) History(ctx *fiber.Ctx) error {
 
 func (controller *ProductController) CustomerSearch(ctx *fiber.Ctx) error {
 	productSearchQuery := new(product_entity.ProductCustomerSearchQuery)
+	productSearchQuery.Limit = 5
+	productSearchQuery.Offset = 0
 	if err := ctx.QueryParser(productSearchQuery); err != nil {
 		return exc.BadRequestException("Error when parsing request query")
 	}
