@@ -145,8 +145,6 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 		searchParams = append(searchParams, searchQuery.Limit, searchQuery.Offset)
 	}
 
-	fmt.Println(query, searchParams)
-
 	rows, err := repository.dbPool.Query(ctx, query, searchParams...)
 	if err != nil {
 		return &[]product_entity.ProductSearchData{}, err
