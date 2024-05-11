@@ -80,7 +80,7 @@ func (repository *productRepositoryImpl) Delete(ctx context.Context, productId s
 }
 
 func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.ProductSearchData, error) {
-	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') created_at FROM products WHERE is_deleted = false`
+	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt FROM products WHERE is_deleted = false`
 	var whereClause []string
 	var searchParams []interface{}
 
@@ -145,6 +145,8 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 		searchParams = append(searchParams, searchQuery.Limit, searchQuery.Offset)
 	}
 
+	fmt.Println(query, searchParams)
+
 	rows, err := repository.dbPool.Query(ctx, query, searchParams...)
 	if err != nil {
 		return &[]product_entity.ProductSearchData{}, err
@@ -174,65 +176,55 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	}
 	subQuery := fmt.Sprintf(`(values %s) as x(id, amount)`, strings.Join(updatedQuantityId, ", "))
 
-	var dataCount, totalPrice, availableCount, outOfStock *int
-	tx, err := repository.dbPool.Begin(ctx)
-	if err != nil {
-		return &product_entity.ProductCheckout{}, err
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		} else {
-			tx.Commit(ctx)
-		}
-	}()
-
-	updateProductQuantityQuery := fmt.Sprintf(`
-	WITH result as (update products p
-	set stock = stock - x.amount 
-	from %s
-	where p.id = x.id
-	returning p.id, p.price, x.amount, p.is_available, p.stock)
-	select count(id) dataCount, 
-		SUM(price * amount) totalPrice,
-		COUNT(CASE WHEN is_available = true THEN 1 END) AS availableCount,
-		COUNT(CASE WHEN stock < 0 THEN 1 END) AS outOfStock
-	FROM result
-	`, subQuery)
-	if err := tx.QueryRow(ctx, updateProductQuantityQuery).Scan(&dataCount, &totalPrice, &availableCount, &outOfStock); err != nil {
+	var dataCount, totalPrice, unavailableCount, outOfStock *int
+	productPriceQuery := fmt.Sprintf(`
+	SELECT count(p.id) dataCount, 
+		SUM(p.price * x.amount) totalPrice,
+		COUNT(CASE WHEN is_available = false THEN 1 END) AS unavailableCount,
+		COUNT(CASE WHEN stock < x.amount THEN 1 END) AS outOfStock
+	FROM products p join %s 
+		ON x.id = p.id `, subQuery)
+	if err := repository.dbPool.QueryRow(ctx, productPriceQuery).Scan(&dataCount, &totalPrice, &unavailableCount, &outOfStock); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// if one of the product is not exist, the len will be different
 	if len(*productCheckout.ProductDetails) != *dataCount {
-		err = errors.New("no rows in result set")
+		err := errors.New("no rows in result set")
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// one of products is not available
-	if *availableCount != len(*productCheckout.ProductDetails) {
-		err = errors.New("doesn’t pass validation: one of productIds is not available")
+	if *unavailableCount > 0 {
+		err := errors.New("doesn’t pass validation: one of productIds is not available")
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// outOfStock
 	if *outOfStock > 0 {
-		err = errors.New("doesn’t pass validation: out of stock")
+		err := errors.New("doesn’t pass validation: out of stock")
 		return &product_entity.ProductCheckout{}, err
 	}
 
 	// check the paid and change
 	if *productCheckout.Paid < *totalPrice {
-		err = errors.New("doesn’t pass validation: paid didn't enough")
+		err := errors.New("doesn’t pass validation: paid didn't enough")
 		return &product_entity.ProductCheckout{}, err
 	}
 	realChange := *productCheckout.Paid - *totalPrice
 	if realChange != *productCheckout.Change {
-		err = errors.New("doesn’t pass validation: change is wrong")
+		err := errors.New("doesn’t pass validation: change is wrong")
 		return &product_entity.ProductCheckout{}, err
 	}
 
+	updateProductQuantityQuery := fmt.Sprintf(`update products p
+	set stock = stock - x.amount 
+	from %s
+	where p.id = x.id
+	`, subQuery)
+	if _, err := repository.dbPool.Exec(ctx, updateProductQuantityQuery); err != nil {
+		return &product_entity.ProductCheckout{}, err
+	}
 	var productId string
 	var createdAt time.Time
 	query := `INSERT INTO transactions
@@ -245,7 +237,7 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	)
 	RETURNING id, created_at
 	`
-	if err = tx.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
+	if err := repository.dbPool.QueryRow(ctx, query, productCheckout.CustomerId, *productCheckout.ProductDetails, productCheckout.Paid, productCheckout.Change).Scan(&productId, &createdAt); err != nil {
 		return &product_entity.ProductCheckout{}, err
 	}
 
@@ -294,7 +286,7 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 }
 
 func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearch) (*[]product_entity.ProductCustomerSearchData, error) {
-	query := `SELECT id, name, sku, category, image_url, stock, price, location, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') created_at FROM products WHERE is_deleted = FALSE AND is_available = TRUE`
+	query := `SELECT id, name, sku, category, image_url, stock, price, location, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt FROM products WHERE is_deleted = FALSE AND is_available = TRUE`
 	var whereClause []string
 	params := []interface{}{}
 

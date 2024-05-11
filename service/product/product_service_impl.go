@@ -7,7 +7,6 @@ import (
 	"eniqilo-store/helpers"
 	product_repository "eniqilo-store/repository/product"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -137,8 +136,12 @@ func (service *productServiceImpl) Search(ctx *fiber.Ctx, searchQueries product_
 		Offset:      0,
 	}
 
-	product.Limit = searchQueries.Limit
-	product.Offset = searchQueries.Offset * searchQueries.Limit
+	if searchQueries.Limit > 0 {
+		product.Limit = searchQueries.Limit
+	}
+	if searchQueries.Offset > 0 {
+		product.Offset = searchQueries.Offset
+	}
 
 	productSearched, err := service.ProductRepository.Search(userCtx, product)
 	if err != nil {
@@ -209,7 +212,6 @@ func (service *productServiceImpl) HistorySearch(ctx *fiber.Ctx, searchQuery pro
 	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
 		searchQuery.CreatedAt = "desc"
 	}
-	searchQuery.Offset = searchQuery.Offset * searchQuery.Limit
 	historySearched, err := service.ProductRepository.HistorySearch(ctx.UserContext(), searchQuery)
 	if err != nil {
 		return product_entity.ProductCheckoutHistoryResponse{}, exc.InternalServerException(fmt.Sprintf("Internal Server Error: %s", err))
@@ -254,11 +256,11 @@ func (s *productServiceImpl) CustomerSearch(ctx context.Context, searchQuery pro
 		Limit:    5,
 		Offset:   0,
 	}
-	if searchQuery.Limit != "" {
-		productQuery.Limit, _ = strconv.Atoi(searchQuery.Limit)
+	if searchQuery.Limit > 0 {
+		productQuery.Limit = searchQuery.Limit
 	}
-	if searchQuery.Offset != "" {
-		productQuery.Offset, _ = strconv.Atoi(searchQuery.Offset)
+	if searchQuery.Offset > 0 {
+		productQuery.Offset = searchQuery.Offset
 	}
 
 	productSearched, err := s.ProductRepository.CustomerSearch(ctx, productQuery)

@@ -8,7 +8,7 @@ run-dev:
 	docker compose up -d
 
 logs-web:
-	docker logs -f store-web
+	docker logs -f --tail 100 store-web
 
 logs-db:
 	docker logs -f store-db

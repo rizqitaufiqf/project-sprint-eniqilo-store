@@ -62,6 +62,6 @@ type ProductCustomerSearchQuery struct {
 	Sku      string `query:"sku" validate:"omitempty"`
 	Price    string `query:"price" validate:"omitempty"`
 	InStock  string `query:"inStock" validate:"omitempty"`
-	Limit    string `query:"limit" validate:"omitempty,number,min=0"`
-	Offset   string `query:"offset" validate:"omitempty,number,min=0"`
+	Limit    int    `query:"limit" validate:"omitempty,number,min=0"`
+	Offset   int    `query:"offset" validate:"omitempty,number,min=0"`
 }
