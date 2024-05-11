@@ -34,5 +34,9 @@ build-prod-win:
 build-prod-mac:
 	GOOS=darwin GOARCH=amd64 go build -o build/eniqilo-store
 
-scp:
-	scp -i key build/eniqilo-store ubuntu@xx.xx.xx.xx:~
+build-prod-docker:
+	docker build . -t eniqilo-store
+	docker tag eniqilo-store:latest rereasdev/eniqilo-store:latest
+
+docker-push:
+	docker push rereasdev/eniqilo-store:latest

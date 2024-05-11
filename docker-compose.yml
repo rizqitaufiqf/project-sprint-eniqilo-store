@@ -1,6 +1,17 @@
 version: '3.0'
 
 services:
+  ##### uncomment this for running from docker hub #####
+  # web:
+  #   container_name: store-web
+  #   image: rereasdev/eniqilo-store:latest
+  #   env_file:
+  #     - eniqilo-store.env
+  #   ports:
+  #     - 8080:8080
+  #   networks:
+  #     - eniqilo
+
   web:
     build: .
     container_name: store-web
