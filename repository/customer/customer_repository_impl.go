@@ -21,12 +21,12 @@ func NewCustomerRepository(dbPool *pgxpool.Pool) CustomerRepository {
 
 func (repository *CustomerRepositoryImpl) Register(ctx context.Context, customer customer_entity.CustomerRegisterRequest) (customer_entity.CustomerData, error) {
 	var customerId string
-	query := "INSERT INTO customers (id, name, phone_number) VALUES (gen_random_uuid(), $1, $2) RETURNING id"
+	query := "INSERT INTO customers (name, phone_number) VALUES ($1, $2) RETURNING id"
 	if err := repository.dbPool.QueryRow(ctx, query, customer.Name, customer.PhoneNumber).Scan(&customerId); err != nil {
 		return customer_entity.CustomerData{}, err
 	}
 
-	return customer_entity.CustomerData{UserId: customerId, Name: customer.Name, PhoneNumber: customer.PhoneNumber}, nil
+	return customer_entity.CustomerData{UserId: customerId}, nil
 }
 
 func (repository *CustomerRepositoryImpl) Search(ctx context.Context, customer customer_entity.CustomerSearchRequest) ([]customer_entity.CustomerData, error) {

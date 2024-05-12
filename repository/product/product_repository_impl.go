@@ -24,30 +24,29 @@ func NewProductRepository(dbPool *pgxpool.Pool) ProductRepository {
 	}
 }
 
-func (repository *productRepositoryImpl) Add(ctx context.Context, product product_entity.Product) (*product_entity.Product, error) {
-	var productId string
-	var createdAt time.Time
+func (repository *productRepositoryImpl) Add(ctx context.Context, product product_entity.ProductRegisterRequest) (*product_entity.ProductData, error) {
+	var productId, createdAt string
 	query := `INSERT INTO products
 	(
-		id, name, sku, category, image_url, notes, price, stock, location, is_available
+		name, sku, category, image_url, notes, price, stock, location, is_available
 	)
 	VALUES
 	(
-		gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9
+		$1, $2, $3, $4, $5, $6, $7, $8, $9
 	)
-	RETURNING id, created_at
+	RETURNING id, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt
 	`
 	if err := repository.dbPool.QueryRow(ctx, query, product.Name, product.Sku, product.Category, product.ImageUrl, product.Notes, product.Price, product.Stock, product.Location, product.IsAvailable).Scan(&productId, &createdAt); err != nil {
-		return &product_entity.Product{}, err
+		return &product_entity.ProductData{}, err
 	}
 
-	product.Id = productId
-	product.CreatedAt = createdAt
-
-	return &product, nil
+	return &product_entity.ProductData{
+		Id:        productId,
+		CreatedAt: createdAt,
+	}, nil
 }
 
-func (repository *productRepositoryImpl) Edit(ctx context.Context, product product_entity.Product, productId string) (*product_entity.Product, error) {
+func (repository *productRepositoryImpl) Edit(ctx context.Context, product product_entity.ProductEditRequest, productId string) (*product_entity.ProductData, error) {
 	updateQ := `UPDATE products SET name = $1, sku = $2, category = $3,
 	image_url = $4, notes = $5, price = $6, stock = $7, location = $8,
 	is_available = $9
@@ -55,15 +54,15 @@ func (repository *productRepositoryImpl) Edit(ctx context.Context, product produ
 	`
 	res, err := repository.dbPool.Exec(ctx, updateQ, product.Name, product.Sku, product.Category, product.ImageUrl, product.Notes, product.Price, product.Stock, product.Location, product.IsAvailable, productId)
 	if err != nil {
-		return &product_entity.Product{}, err
+		return &product_entity.ProductData{}, err
 	}
 	if res.RowsAffected() == 0 {
-		return &product_entity.Product{}, exc.NotFoundException("Product id does not exist")
+		return &product_entity.ProductData{}, exc.NotFoundException("Product id does not exist")
 	}
 
-	product.Id = productId
-
-	return &product, nil
+	return &product_entity.ProductData{
+		Id: productId,
+	}, nil
 }
 
 func (repository *productRepositoryImpl) Delete(ctx context.Context, productId string) (*product_entity.ProductDeleteData, error) {
@@ -79,47 +78,35 @@ func (repository *productRepositoryImpl) Delete(ctx context.Context, productId s
 	return &product, nil
 }
 
-func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearch) (*[]product_entity.ProductSearchData, error) {
+func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery product_entity.ProductSearchQuery) (*[]product_entity.ProductSearchData, error) {
 	query := `SELECT id, name, sku, category, image_url, stock, notes, price, location, is_available, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') createdAt FROM products WHERE is_deleted = false`
 	var whereClause []string
 	var searchParams []interface{}
 
 	if searchQuery.Id != "" {
-		whereClause = append(whereClause, fmt.Sprintf("id = $%s", strconv.Itoa(len(searchParams)+1)))
+		whereClause = append(whereClause, fmt.Sprintf("id = $%d", len(searchParams)+1))
 		searchParams = append(searchParams, searchQuery.Id)
 	}
 	if searchQuery.Name != "" {
-		whereClause = append(whereClause, fmt.Sprintf("name ~* $%s", strconv.Itoa(len(searchParams)+1)))
+		whereClause = append(whereClause, fmt.Sprintf("name ~* $%d", len(searchParams)+1))
 		searchParams = append(searchParams, searchQuery.Name)
 	}
-	if searchQuery.IsAvailable != "" {
-		isAvail, err := strconv.ParseBool(searchQuery.IsAvailable)
-		if err != nil {
-			return &[]product_entity.ProductSearchData{}, err
-		}
-		whereClause = append(whereClause, fmt.Sprintf("is_available = $%s", strconv.Itoa(len(searchParams)+1)))
-		searchParams = append(searchParams, isAvail)
+	if searchQuery.IsAvailable != nil {
+		whereClause = append(whereClause, fmt.Sprintf("is_available = $%d", len(searchParams)+1))
+		searchParams = append(searchParams, searchQuery.IsAvailable)
 	}
 	if searchQuery.Category != "" {
-		whereClause = append(whereClause, fmt.Sprintf("category = $%s", strconv.Itoa(len(searchParams)+1)))
+		whereClause = append(whereClause, fmt.Sprintf("category = $%d", len(searchParams)+1))
 		searchParams = append(searchParams, searchQuery.Category)
 	}
 	if searchQuery.Sku != "" {
-		whereClause = append(whereClause, fmt.Sprintf("sku = $%s", strconv.Itoa(len(searchParams)+1)))
+		whereClause = append(whereClause, fmt.Sprintf("sku = $%d", len(searchParams)+1))
 		searchParams = append(searchParams, searchQuery.Sku)
 	}
-	if searchQuery.InStock != "" {
-		inStock, _ := strconv.ParseBool(searchQuery.InStock)
-
-		var op string
-		if inStock {
-			op = ">"
-		} else {
-			op = "="
-		}
-		whereClause = append(whereClause, fmt.Sprintf("stock %s $%s", op, strconv.Itoa(len(searchParams)+1)))
-		searchParams = append(searchParams, 0)
+	if searchQuery.InStock {
+		query += "stock > 0"
 	}
+
 	if len(whereClause) > 0 {
 		query += " AND " + strings.Join(whereClause, " AND ")
 	}
@@ -127,11 +114,16 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 	// construct order by
 	var orderByClause []string
 	var orderByDefault = ` ORDER BY created_at DESC`
-	if searchQuery.Price != "" {
-		orderByClause = append(orderByClause, fmt.Sprintf("price %s", searchQuery.Price))
+	if strings.ToLower(searchQuery.Price) == "asc" {
+		query += "price asc"
+	} else if strings.ToLower(searchQuery.Price) == "desc" {
+		query += "price desc"
 	}
-	if searchQuery.CreatedAt != "" {
-		orderByClause = append(orderByClause, fmt.Sprintf("created_at %s", searchQuery.CreatedAt))
+
+	if strings.ToLower(searchQuery.CreatedAt) == "asc" {
+		orderByClause = append(orderByClause, "created_at")
+	} else if strings.ToLower(searchQuery.CreatedAt) == "desc" {
+		orderByClause = append(orderByClause, "created_at desc")
 	}
 
 	if len(orderByClause) > 0 {
@@ -140,13 +132,11 @@ func (repository *productRepositoryImpl) Search(ctx context.Context, searchQuery
 		query += orderByDefault
 	}
 
-	if searchQuery.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len(searchParams)+1), strconv.Itoa(len(searchParams)+2))
-		searchParams = append(searchParams, searchQuery.Limit, searchQuery.Offset)
-	}
-
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", searchQuery.Limit, searchQuery.Offset)
+	fmt.Println(query, searchParams)
 	rows, err := repository.dbPool.Query(ctx, query, searchParams...)
 	if err != nil {
+		fmt.Println(err.Error())
 		return &[]product_entity.ProductSearchData{}, err
 	}
 	defer rows.Close()
@@ -245,7 +235,7 @@ func (repository *productRepositoryImpl) Checkout(ctx context.Context, productCh
 	return &productCheckout, nil
 }
 
-func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, searchQuery product_entity.ProductCheckoutHistoryRequest) ([]product_entity.ProductCheckoutDataResponse, error) {
+func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, searchQuery product_entity.ProductCheckoutHistoryRequest) (*[]product_entity.ProductCheckoutDataResponse, error) {
 	query := `SELECT id transactionId, 
 		customer_id customerId, 
 		product_details productDetails, 
@@ -256,7 +246,7 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 	params := []interface{}{}
 
 	if searchQuery.CustomerId != "" {
-		query += fmt.Sprintf(" WHERE customer_id = $%s", strconv.Itoa(len(params)+1))
+		query += fmt.Sprintf(" WHERE customer_id = $%d", len(params)+1)
 		params = append(params, searchQuery.CustomerId)
 	}
 
@@ -264,23 +254,20 @@ func (repository *productRepositoryImpl) HistorySearch(ctx context.Context, sear
 	if strings.ToLower(searchQuery.CreatedAt) != "asc" {
 		query += " DESC"
 	}
-
-	len_p := len(params)
-	query += fmt.Sprintf(" LIMIT $%s OFFSET $%s", strconv.Itoa(len_p+1), strconv.Itoa(len_p+2))
-	params = append(params, searchQuery.Limit, searchQuery.Offset)
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", searchQuery.Limit, searchQuery.Offset)
 
 	rows, err := repository.dbPool.Query(ctx, query, params...)
 	if err != nil {
-		return []product_entity.ProductCheckoutDataResponse{}, err
+		return &[]product_entity.ProductCheckoutDataResponse{}, err
 	}
 	defer rows.Close()
 
 	history, err := pgx.CollectRows(rows, pgx.RowToStructByName[product_entity.ProductCheckoutDataResponse])
 	if err != nil {
-		return []product_entity.ProductCheckoutDataResponse{}, err
+		return &[]product_entity.ProductCheckoutDataResponse{}, err
 	}
 
-	return history, nil
+	return &history, nil
 }
 
 func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, searchQuery product_entity.ProductCustomerSearchQuery) (*[]product_entity.ProductCustomerSearchData, error) {
@@ -304,7 +291,7 @@ func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, sea
 	}
 
 	if searchQuery.InStock {
-		whereClause = append(whereClause, fmt.Sprintf("stock > 0"))
+		whereClause = append(whereClause, "stock > 0")
 	}
 
 	if len(whereClause) > 0 {
@@ -317,13 +304,7 @@ func (repository *productRepositoryImpl) CustomerSearch(ctx context.Context, sea
 		query += " ORDER BY created_at DESC"
 	}
 
-	if searchQuery.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", searchQuery.Limit)
-	}
-
-	if searchQuery.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET %d", searchQuery.Offset)
-	}
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", searchQuery.Limit, searchQuery.Offset)
 
 	rows, err := repository.dbPool.Query(ctx, query, params...)
 	if err != nil {

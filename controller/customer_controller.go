@@ -38,7 +38,6 @@ func (controller *CustomerController) Search(ctx *fiber.Ctx) error {
 	if err := ctx.QueryParser(customerQuery); err != nil {
 		return exc.BadRequestException("Failed to parse request body")
 	}
-
 	resp, err := controller.CustomerService.Search(ctx.UserContext(), *customerQuery)
 	if err != nil {
 		return exc.Exception(ctx, err)

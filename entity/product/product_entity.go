@@ -10,19 +10,6 @@ type Product struct {
 	CreatedAt                                          time.Time
 }
 
-type ProductSearch struct {
-	Id          string
-	Name        string
-	IsAvailable string
-	Category    string
-	Sku         string
-	Price       string
-	InStock     string
-	CreatedAt   string
-	Limit       int
-	Offset      int
-}
-
 type ProductCheckout struct {
 	CheckoutId, CustomerId string
 	Paid, Change           *int

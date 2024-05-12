@@ -6,6 +6,6 @@ import (
 )
 
 type StaffService interface {
-	Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffRegisterResponse, error)
-	Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error)
+	Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffResponse, error)
+	Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffResponse, error)
 }

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS transactions (
-    id VARCHAR(100) NOT NULL PRIMARY KEY,
+    id VARCHAR(100) NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id VARCHAR(100) NOT NULL,
     product_details jsonb NOT NULL,
     paid INT NOT NULL,

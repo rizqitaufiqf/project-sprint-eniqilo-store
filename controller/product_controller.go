@@ -47,6 +47,8 @@ func (controller *ProductController) Edit(ctx *fiber.Ctx) error {
 
 func (controller *ProductController) Search(ctx *fiber.Ctx) error {
 	productSearchQueries := new(product_entity.ProductSearchQuery)
+	productSearchQueries.Limit = 5
+	productSearchQueries.Offset = 0
 	if err := ctx.QueryParser(productSearchQueries); err != nil {
 		return exc.BadRequestException("Error when parsing request query")
 	}
