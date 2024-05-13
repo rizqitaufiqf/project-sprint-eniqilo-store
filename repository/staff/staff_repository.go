@@ -6,6 +6,6 @@ import (
 )
 
 type StaffRepository interface {
-	Register(ctx context.Context, req staff_entity.Staff) (staff_entity.Staff, error)
-	Login(ctx context.Context, req staff_entity.Staff) (staff_entity.Staff, error)
+	Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffData, error)
+	Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.Staff, error)
 }

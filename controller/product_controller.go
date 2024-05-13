@@ -47,6 +47,8 @@ func (controller *ProductController) Edit(ctx *fiber.Ctx) error {
 
 func (controller *ProductController) Search(ctx *fiber.Ctx) error {
 	productSearchQueries := new(product_entity.ProductSearchQuery)
+	productSearchQueries.Limit = 5
+	productSearchQueries.Offset = 0
 	if err := ctx.QueryParser(productSearchQueries); err != nil {
 		return exc.BadRequestException("Error when parsing request query")
 	}
@@ -79,7 +81,7 @@ func (controller *ProductController) Checkout(ctx *fiber.Ctx) error {
 		return exc.Exception(ctx, err)
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(resp)
+	return ctx.Status(fiber.StatusOK).JSON(resp)
 
 }
 
@@ -101,6 +103,8 @@ func (controller *ProductController) History(ctx *fiber.Ctx) error {
 
 func (controller *ProductController) CustomerSearch(ctx *fiber.Ctx) error {
 	productSearchQuery := new(product_entity.ProductCustomerSearchQuery)
+	productSearchQuery.Limit = 5
+	productSearchQuery.Offset = 0
 	if err := ctx.QueryParser(productSearchQuery); err != nil {
 		return exc.BadRequestException("Error when parsing request query")
 	}

@@ -37,13 +37,11 @@ func (service *CustomerServiceImpl) Register(ctx context.Context, req customer_e
 		return customer_entity.CustomerRegisterResponse{}, err
 	}
 
+	customerRegistered.Name = req.Name
+	customerRegistered.PhoneNumber = req.PhoneNumber
 	return customer_entity.CustomerRegisterResponse{
 		Message: "Customer registered",
-		Data: &customer_entity.CustomerData{
-			UserId:      customerRegistered.UserId,
-			Name:        customerRegistered.Name,
-			PhoneNumber: customerRegistered.PhoneNumber,
-		},
+		Data:    &customerRegistered,
 	}, nil
 }
 
@@ -52,12 +50,7 @@ func (service *CustomerServiceImpl) Search(ctx context.Context, req customer_ent
 		return customer_entity.CustomerSearchResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
 
-	customer := customer_entity.CustomerSearchRequest{
-		PhoneNumber: req.PhoneNumber,
-		Name:        req.Name,
-	}
-
-	customerSearch, err := service.CustomerRepository.Search(ctx, customer)
+	customerSearch, err := service.CustomerRepository.Search(ctx, req)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return customer_entity.CustomerSearchResponse{}, exc.NotFoundException("Customer is not found")
