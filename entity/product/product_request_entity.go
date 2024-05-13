@@ -25,16 +25,16 @@ type ProductEditRequest struct {
 }
 
 type ProductSearchQuery struct {
-	Id          string `query:"id" validate:"omitempty"`
-	Name        string `query:"name" validate:"omitempty"`
-	IsAvailable string `query:"isAvailable" validate:"omitempty"`
-	Category    string `query:"category" validate:"omitempty"`
-	Sku         string `query:"sku" validate:"omitempty"`
-	Price       string `query:"price" validate:"omitempty"`
-	InStock     string `query:"inStock" validate:"omitempty"`
-	CreatedAt   string `query:"createdAt" validate:"omitempty"`
-	Limit       int    `query:"limit" validate:"omitempty,number,min=0"`
-	Offset      int    `query:"offset" validate:"omitempty,number,min=0"`
+	Id          string
+	Name        string
+	IsAvailable *bool
+	Category    string
+	Sku         string
+	Price       string
+	InStock     bool
+	CreatedAt   string
+	Limit       int
+	Offset      int
 }
 
 type ProductCheckoutDetailsRequest struct {

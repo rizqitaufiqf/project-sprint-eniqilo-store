@@ -28,79 +28,68 @@ func NewStaffService(staffRepository staffRep.StaffRepository, authService authS
 	}
 }
 
-func (service *staffServiceImpl) Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffRegisterResponse, error) {
+func (service *staffServiceImpl) Register(ctx context.Context, req staff_entity.StaffRegisterRequest) (staff_entity.StaffResponse, error) {
 	// validate by rule we defined in _request_entity.go
 	if err := service.Validator.Struct(req); err != nil {
-		return staff_entity.StaffRegisterResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
+		return staff_entity.StaffResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
 
 	hashPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
-		return staff_entity.StaffRegisterResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
-	staff := staff_entity.Staff{
-		Name:        req.Name,
-		PhoneNumber: req.PhoneNumber,
-		Password:    hashPassword,
-	}
+	req.Password = hashPassword
 
-	staffRegistered, err := service.StaffRepository.Register(ctx, staff)
+	staffRegistered, err := service.StaffRepository.Register(ctx, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
-			return staff_entity.StaffRegisterResponse{}, exc.ConflictException("Staff with this phone number already registered")
+			return staff_entity.StaffResponse{}, exc.ConflictException("Staff with this phone number already registered")
 		}
-		return staff_entity.StaffRegisterResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
 	token, err := service.AuthService.GenerateToken(ctx, staffRegistered.Id)
 	if err != nil {
-		return staff_entity.StaffRegisterResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
-	return staff_entity.StaffRegisterResponse{
+	staffRegistered.AccessToken = token
+	return staff_entity.StaffResponse{
 		Message: "Staff registered",
-		Data: &staff_entity.StaffData{
-			PhoneNumber: staffRegistered.PhoneNumber,
-			Name:        staffRegistered.Name,
-			AccessToken: token,
-		},
+		Data:    &staffRegistered,
 	}, nil
 }
 
-func (service *staffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffLoginResponse, error) {
+func (service *staffServiceImpl) Login(ctx context.Context, req staff_entity.StaffLoginRequest) (staff_entity.StaffResponse, error) {
 	// validate by rule we defined in _request_entity.go
 	if err := service.Validator.Struct(req); err != nil {
-		return staff_entity.StaffLoginResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
+		return staff_entity.StaffResponse{}, exc.BadRequestException(fmt.Sprintf("Bad request: %s", err))
 	}
 
-	staff := staff_entity.Staff{
-		PhoneNumber: req.PhoneNumber,
-	}
-
-	staffLogin, err := service.StaffRepository.Login(ctx, staff)
+	staffLogin, err := service.StaffRepository.Login(ctx, req)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			return staff_entity.StaffLoginResponse{}, exc.NotFoundException("Staff is not found")
+			return staff_entity.StaffResponse{}, exc.NotFoundException("Staff is not found")
 		}
 
-		return staff_entity.StaffLoginResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
 	if _, err = helpers.ComparePassword(staffLogin.Password, req.Password); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return staff_entity.StaffLoginResponse{}, exc.BadRequestException("Invalid password")
+			return staff_entity.StaffResponse{}, exc.BadRequestException("Invalid password")
 		}
 
-		return staff_entity.StaffLoginResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
 	token, err := service.AuthService.GenerateToken(ctx, staffLogin.Id)
 	if err != nil {
-		return staff_entity.StaffLoginResponse{}, err
+		return staff_entity.StaffResponse{}, err
 	}
 
-	return staff_entity.StaffLoginResponse{
+	return staff_entity.StaffResponse{
 		Message: "Staff logged successfully",
 		Data: &staff_entity.StaffData{
 			Id:          staffLogin.Id,

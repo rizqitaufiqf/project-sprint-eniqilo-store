@@ -12,12 +12,12 @@ import (
 
 func StartApp() {
 	app := fiber.New(fiber.Config{
-		JSONEncoder:  json.Marshal,
-		JSONDecoder:  json.Unmarshal,
-		IdleTimeout:  cfg.IdleTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-		ReadTimeout:  cfg.ReadTimeout,
-		Prefork:      cfg.Prefork,
+		JSONEncoder: json.Marshal,
+		JSONDecoder: json.Unmarshal,
+		// IdleTimeout:  cfg.IdleTimeout,
+		// WriteTimeout: cfg.WriteTimeout,
+		// ReadTimeout:  cfg.ReadTimeout,
+		Prefork: cfg.Prefork,
 	})
 
 	dbPool := database.GetConnPool()
